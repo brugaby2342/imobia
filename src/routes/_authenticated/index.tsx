@@ -100,6 +100,13 @@ const SUGESTOES = [
 
 function Index() {
   const navigate = useNavigate();
+  const routeCtx = Route.useRouteContext() as { role?: string };
+  const isAdmin = routeCtx.role === "admin";
+  const search = Route.useSearch();
+  const [deniedVisible, setDeniedVisible] = useState<boolean>(!!search.denied);
+  useEffect(() => {
+    setDeniedVisible(!!search.denied);
+  }, [search.denied]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
