@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Plus, Building2, Loader2, LogOut } from "lucide-react";
+import { Send, Plus, Building2, Loader2, LogOut, MapPin, Ruler, BedDouble, FileCheck2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/")({
@@ -24,7 +24,70 @@ export const Route = createFileRoute("/_authenticated/")({
   component: Index,
 });
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Imovel = {
+  id: string | number;
+  tipo: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+  valor: number | null;
+  area_m2: number | null;
+  quartos: number | null;
+  status_documentacao: string | null;
+  descricao: string | null;
+};
+type Msg = { role: "user" | "assistant"; content: string; imoveis?: Imovel[] };
+
+const brl = (v: number | null) =>
+  v == null
+    ? "—"
+    : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(v);
+
+function ImovelCard({ im }: { im: Imovel }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-300 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold text-slate-900">
+            {im.tipo ?? "Imóvel"}
+            {im.bairro ? <span className="text-blue-700"> · {im.bairro}</span> : null}
+          </h3>
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">
+              {[im.cidade, im.estado].filter(Boolean).join(" / ") || "Localização não informada"}
+            </span>
+          </p>
+        </div>
+        <div className="shrink-0 rounded-md bg-blue-50 px-2.5 py-1 text-sm font-semibold text-blue-800">
+          {brl(im.valor)}
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-600">
+        <div className="flex items-center gap-1">
+          <Ruler className="h-3.5 w-3.5 text-slate-400" />
+          <span>{im.area_m2 != null ? `${im.area_m2} m²` : "—"}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <BedDouble className="h-3.5 w-3.5 text-slate-400" />
+          <span>{im.quartos != null ? `${im.quartos} quartos` : "—"}</span>
+        </div>
+        <div className="flex items-center gap-1 justify-self-end">
+          <FileCheck2 className="h-3.5 w-3.5 text-slate-400" />
+        </div>
+      </div>
+      {im.status_documentacao && (
+        <div className="mt-2 border-t border-slate-100 pt-2 text-[11px] leading-relaxed text-slate-500">
+          <span className="font-medium text-slate-600">Situação documental:</span>{" "}
+          {im.status_documentacao}
+        </div>
+      )}
+      {im.descricao && (
+        <p className="mt-2 line-clamp-2 text-xs text-slate-600">{im.descricao}</p>
+      )}
+    </div>
+  );
+}
 
 const SUGESTOES = [
   "Quais apartamentos de até R$ 800 mil em Balneário Camboriú?",
@@ -66,7 +129,11 @@ function Index() {
         },
         body: JSON.stringify({ messages: next }),
       });
-      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        text?: string;
+        error?: string;
+        imoveis?: Imovel[];
+      };
       if (!res.ok) {
         const errMsg =
           res.status === 401
@@ -78,7 +145,10 @@ function Index() {
                 : data.error || "Falha ao consultar o copiloto.";
         setMessages([...next, { role: "assistant", content: `⚠️ ${errMsg}` }]);
       } else {
-        setMessages([...next, { role: "assistant", content: data.text ?? "" }]);
+        setMessages([
+          ...next,
+          { role: "assistant", content: data.text ?? "", imoveis: data.imoveis ?? [] },
+        ]);
       }
     } catch {
       setMessages([
@@ -168,25 +238,31 @@ function Index() {
         ) : (
           <div className="space-y-4">
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={
-                    m.role === "user"
-                      ? "max-w-[85%] rounded-2xl rounded-br-sm bg-blue-700 px-4 py-2.5 text-sm text-white shadow-sm"
-                      : "max-w-[85%] rounded-2xl rounded-bl-sm border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm"
-                  }
-                >
-                  {m.role === "assistant" ? (
-                    <div className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-strong:text-slate-900">
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{m.content}</p>
-                  )}
-                </div>
+              <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+                {(m.role === "user" || m.content) && (
+                  <div
+                    className={
+                      m.role === "user"
+                        ? "max-w-[85%] rounded-2xl rounded-br-sm bg-blue-700 px-4 py-2.5 text-sm text-white shadow-sm"
+                        : "max-w-[85%] rounded-2xl rounded-bl-sm border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm"
+                    }
+                  >
+                    {m.role === "assistant" ? (
+                      <div className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-strong:text-slate-900">
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                    )}
+                  </div>
+                )}
+                {m.role === "assistant" && m.imoveis && m.imoveis.length > 0 && (
+                  <div className="mt-3 grid w-full gap-3 sm:grid-cols-2">
+                    {m.imoveis.map((im) => (
+                      <ImovelCard key={String(im.id)} im={im} />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {loading && (

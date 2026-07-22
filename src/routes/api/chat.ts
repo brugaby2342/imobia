@@ -17,7 +17,9 @@ REGRAS ESTRITAS:
 - Sempre chame buscar_imoveis antes de listar imóveis. Se o usuário só cumprimentar ou fizer pergunta genérica, explique brevemente o que você faz.
 - Formate valores em BRL (R$ 850.000). Use "Área (m²)" e "Situação documental" como rótulos.
 - Seja conciso, corporativo e útil. Responda em português do Brasil. Use markdown (listas, negrito) quando ajudar.
-- Ao listar imóveis, inclua: tipo, bairro/cidade/UF, valor, área (m²), quartos, situação documental e uma linha de descrição quando existir.`;
+- Ao listar imóveis, NÃO repita os detalhes em texto: os imóveis serão renderizados como cards visuais pelo frontend a partir dos dados estruturados. Apenas escreva uma introdução curta (1-2 frases) resumindo o que foi encontrado (ex: "Encontrei 3 apartamentos em Balneário Camboriú dentro do seu orçamento:"). Não liste tipo, valor, área, etc. em texto.
+- Quando a tool buscar_imoveis retornar { cidade_fora_portfolio: true }: explique que a Litoral Prime não atua na cidade solicitada e liste as cidades disponíveis retornadas em cidades_disponiveis. Não sugira alternativas fora dessa lista.
+- Quando a tool retornar imóveis vazios mas a cidade EXISTE no portfólio (cidade_fora_portfolio ausente/false e total = 0): diga que não há imóveis com aquelas características naquela cidade e sugira ajustar os filtros (ex: ampliar faixa de valor, remover algum critério).`;
 
 function isNewSupabaseApiKey(v: string) {
   return v.startsWith("sb_publishable_") || v.startsWith("sb_secret_");
@@ -149,7 +151,34 @@ export const Route = createFileRoute("/api/chat")({
             if (statusDoc) q = q.ilike("status_documentacao", `%${statusDoc}%`);
             const { data, error } = await q;
             if (error) return { erro: error.message, imoveis: [] };
-            return { total: data?.length ?? 0, imoveis: data ?? [] };
+            const imoveis = data ?? [];
+            if (imoveis.length === 0 && cidade) {
+              const { data: cityCheck } = await supabase
+                .from("imoveis")
+                .select("id")
+                .ilike("cidade", `%${cidade}%`)
+                .limit(1);
+              if (!cityCheck || cityCheck.length === 0) {
+                const { data: allCities } = await supabase
+                  .from("imoveis")
+                  .select("cidade, estado");
+                const uniq = Array.from(
+                  new Set(
+                    (allCities ?? [])
+                      .map((r) => (r.cidade ? `${r.cidade}${r.estado ? "/" + r.estado : ""}` : null))
+                      .filter((v): v is string => !!v),
+                  ),
+                ).sort();
+                return {
+                  total: 0,
+                  imoveis: [],
+                  cidade_fora_portfolio: true,
+                  cidade_solicitada: cidade,
+                  cidades_disponiveis: uniq,
+                };
+              }
+            }
+            return { total: imoveis.length, imoveis };
           },
         });
 
@@ -162,7 +191,35 @@ export const Route = createFileRoute("/api/chat")({
             tools: { buscar_imoveis: buscarImoveis },
             stopWhen: stepCountIs(5),
           });
-          return Response.json({ text: result.text });
+          type ImovelRow = {
+            id: string | number;
+            tipo: string | null;
+            bairro: string | null;
+            cidade: string | null;
+            estado: string | null;
+            valor: number | null;
+            area_m2: number | null;
+            quartos: number | null;
+            status_documentacao: string | null;
+            descricao: string | null;
+          };
+          const imoveis: ImovelRow[] = [];
+          const seen = new Set<string>();
+          for (const step of (result.steps ?? []) as Array<{
+            toolResults?: Array<{ toolName?: string; output?: unknown; result?: unknown }>;
+          }>) {
+            for (const tr of step.toolResults ?? []) {
+              if (tr.toolName !== "buscar_imoveis") continue;
+              const output = (tr.output ?? tr.result) as { imoveis?: ImovelRow[] } | undefined;
+              for (const im of output?.imoveis ?? []) {
+                const key = String(im.id);
+                if (seen.has(key)) continue;
+                seen.add(key);
+                imoveis.push(im);
+              }
+            }
+          }
+          return Response.json({ text: result.text, imoveis });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           const status = /429|rate/i.test(msg) ? 429 : /402|credit/i.test(msg) ? 402 : 500;
