@@ -151,7 +151,34 @@ export const Route = createFileRoute("/api/chat")({
             if (statusDoc) q = q.ilike("status_documentacao", `%${statusDoc}%`);
             const { data, error } = await q;
             if (error) return { erro: error.message, imoveis: [] };
-            return { total: data?.length ?? 0, imoveis: data ?? [] };
+            const imoveis = data ?? [];
+            if (imoveis.length === 0 && cidade) {
+              const { data: cityCheck } = await supabase
+                .from("imoveis")
+                .select("id")
+                .ilike("cidade", `%${cidade}%`)
+                .limit(1);
+              if (!cityCheck || cityCheck.length === 0) {
+                const { data: allCities } = await supabase
+                  .from("imoveis")
+                  .select("cidade, estado");
+                const uniq = Array.from(
+                  new Set(
+                    (allCities ?? [])
+                      .map((r) => (r.cidade ? `${r.cidade}${r.estado ? "/" + r.estado : ""}` : null))
+                      .filter((v): v is string => !!v),
+                  ),
+                ).sort();
+                return {
+                  total: 0,
+                  imoveis: [],
+                  cidade_fora_portfolio: true,
+                  cidade_solicitada: cidade,
+                  cidades_disponiveis: uniq,
+                };
+              }
+            }
+            return { total: imoveis.length, imoveis };
           },
         });
 
