@@ -230,6 +230,23 @@ function Index() {
         ref={scrollRef}
         className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto px-4 py-6"
       >
+        {deniedVisible && (
+          <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <span>
+              Acesso restrito: apenas administradores podem gerenciar imóveis.
+            </span>
+            <button
+              onClick={() => {
+                setDeniedVisible(false);
+                navigate({ to: "/", search: {} });
+              }}
+              aria-label="Fechar"
+              className="text-amber-700 hover:text-amber-900"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         {messages.length === 0 ? (
           <div className="mx-auto mt-8 max-w-2xl text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-md">
