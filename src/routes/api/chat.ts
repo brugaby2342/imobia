@@ -191,7 +191,35 @@ export const Route = createFileRoute("/api/chat")({
             tools: { buscar_imoveis: buscarImoveis },
             stopWhen: stepCountIs(5),
           });
-          return Response.json({ text: result.text });
+          type ImovelRow = {
+            id: string | number;
+            tipo: string | null;
+            bairro: string | null;
+            cidade: string | null;
+            estado: string | null;
+            valor: number | null;
+            area_m2: number | null;
+            quartos: number | null;
+            status_documentacao: string | null;
+            descricao: string | null;
+          };
+          const imoveis: ImovelRow[] = [];
+          const seen = new Set<string>();
+          for (const step of (result.steps ?? []) as Array<{
+            toolResults?: Array<{ toolName?: string; output?: unknown; result?: unknown }>;
+          }>) {
+            for (const tr of step.toolResults ?? []) {
+              if (tr.toolName !== "buscar_imoveis") continue;
+              const output = (tr.output ?? tr.result) as { imoveis?: ImovelRow[] } | undefined;
+              for (const im of output?.imoveis ?? []) {
+                const key = String(im.id);
+                if (seen.has(key)) continue;
+                seen.add(key);
+                imoveis.push(im);
+              }
+            }
+          }
+          return Response.json({ text: result.text, imoveis });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           const status = /429|rate/i.test(msg) ? 429 : /402|credit/i.test(msg) ? 402 : 500;
