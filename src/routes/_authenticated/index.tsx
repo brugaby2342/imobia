@@ -1,9 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Plus, Building2, Loader2 } from "lucide-react";
+import { Send, Plus, Building2, Loader2, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/_authenticated/")({
   head: () => ({
     meta: [
       { title: "ImobIA — Copiloto Litoral Prime" },
@@ -32,10 +33,16 @@ const SUGESTOES = [
 ];
 
 function Index() {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+  }, []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -49,24 +56,31 @@ function Index() {
     setInput("");
     setLoading(true);
     try {
+      const { data: sess } = await supabase.auth.getSession();
+      const token = sess.session?.access_token;
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ messages: next }),
       });
       const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
       if (!res.ok) {
         const errMsg =
-          res.status === 429
-            ? "Limite de requisições atingido. Tente novamente em instantes."
-            : res.status === 402
-              ? "Créditos de IA esgotados. Peça ao administrador para adicionar créditos."
-              : data.error || "Falha ao consultar o copiloto.";
+          res.status === 401
+            ? "Sessão expirada. Faça login novamente."
+            : res.status === 429
+              ? "Limite de requisições atingido. Tente novamente em instantes."
+              : res.status === 402
+                ? "Créditos de IA esgotados. Peça ao administrador para adicionar créditos."
+                : data.error || "Falha ao consultar o copiloto.";
         setMessages([...next, { role: "assistant", content: `⚠️ ${errMsg}` }]);
       } else {
         setMessages([...next, { role: "assistant", content: data.text ?? "" }]);
       }
-    } catch (e) {
+    } catch {
       setMessages([
         ...next,
         { role: "assistant", content: "⚠️ Erro de rede. Verifique sua conexão." },
@@ -81,10 +95,15 @@ function Index() {
     setInput("");
   }
 
+  async function sair() {
+    await supabase.auth.signOut();
+    navigate({ to: "/auth", replace: true });
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-slate-50 to-blue-50/40">
       <header className="border-b border-slate-200/70 bg-white/80 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-sm">
               <Building2 className="h-5 w-5" />
@@ -94,13 +113,27 @@ function Index() {
               <p className="text-xs text-slate-500">Copiloto · Litoral Prime</p>
             </div>
           </div>
-          <button
-            onClick={novaConversa}
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Nova conversa
-          </button>
+          <div className="flex items-center gap-2">
+            {email && (
+              <span className="hidden max-w-[200px] truncate text-xs text-slate-600 sm:inline">
+                {email}
+              </span>
+            )}
+            <button
+              onClick={novaConversa}
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Nova conversa
+            </button>
+            <button
+              onClick={sair}
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Sair
+            </button>
+          </div>
         </div>
       </header>
 
