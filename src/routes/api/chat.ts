@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createClient } from "@supabase/supabase-js";
 import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Database } from "@/integrations/supabase/types";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
-
 
 const SYSTEM_PROMPT = `Você é o ImobIA, copiloto de consulta do portfólio da imobiliária Litoral Prime (litoral de Santa Catarina).
 
@@ -19,10 +19,21 @@ REGRAS ESTRITAS:
 - Seja conciso, corporativo e útil. Responda em português do Brasil. Use markdown (listas, negrito) quando ajudar.
 - Ao listar imóveis, inclua: tipo, bairro/cidade/UF, valor, área (m²), quartos, situação documental e uma linha de descrição quando existir.`;
 
+function isNewSupabaseApiKey(v: string) {
+  return v.startsWith("sb_publishable_") || v.startsWith("sb_secret_");
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const authHeader = request.headers.get("authorization") || "";
+        if (!authHeader.startsWith("Bearer ")) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+        const token = authHeader.slice("Bearer ".length).trim();
+        if (!token) return new Response("Unauthorized", { status: 401 });
+
         const body = (await request.json()) as { messages?: ChatMessage[] };
         const messages = body.messages;
         if (!Array.isArray(messages) || messages.length === 0) {
@@ -32,11 +43,36 @@ export const Route = createFileRoute("/api/chat")({
         const apiKey = process.env.LOVABLE_API_KEY;
         if (!apiKey) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
 
-        const supabase = createClient<Database>(
-          process.env.SUPABASE_URL!,
-          process.env.SUPABASE_PUBLISHABLE_KEY!,
-          { auth: { persistSession: false, autoRefreshToken: false, storage: undefined } },
-        );
+        const SUPABASE_URL = process.env.SUPABASE_URL!;
+        const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY!;
+
+        // Authenticated client: acts as the signed-in user (RLS applies).
+        const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false, storage: undefined },
+          global: {
+            headers: { Authorization: `Bearer ${token}` },
+            fetch: (input, init) => {
+              const headers = new Headers(init?.headers);
+              if (
+                isNewSupabaseApiKey(SUPABASE_PUBLISHABLE_KEY) &&
+                headers.get("Authorization") === `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+              ) {
+                headers.delete("Authorization");
+              }
+              headers.set("apikey", SUPABASE_PUBLISHABLE_KEY);
+              // Preserve the user bearer for PostgREST RLS
+              if (!headers.get("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+              return fetch(input, { ...init, headers });
+            },
+          },
+        });
+
+        // Validate the token
+        const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(token);
+        if (claimsErr || !claimsData?.claims?.sub) {
+          return new Response("Unauthorized", { status: 401 });
+        }
+
 
         const parseNumber = (v: unknown): number | null => {
           if (v === null || v === undefined || v === "") return null;
