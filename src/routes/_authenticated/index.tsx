@@ -129,7 +129,11 @@ function Index() {
         },
         body: JSON.stringify({ messages: next }),
       });
-      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        text?: string;
+        error?: string;
+        imoveis?: Imovel[];
+      };
       if (!res.ok) {
         const errMsg =
           res.status === 401
@@ -141,7 +145,10 @@ function Index() {
                 : data.error || "Falha ao consultar o copiloto.";
         setMessages([...next, { role: "assistant", content: `⚠️ ${errMsg}` }]);
       } else {
-        setMessages([...next, { role: "assistant", content: data.text ?? "" }]);
+        setMessages([
+          ...next,
+          { role: "assistant", content: data.text ?? "", imoveis: data.imoveis ?? [] },
+        ]);
       }
     } catch {
       setMessages([
