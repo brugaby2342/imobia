@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createClient } from "@supabase/supabase-js";
 import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
-import type { Database } from "@/integrations/supabase/types";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
+
 
 const SYSTEM_PROMPT = `Você é o ImobIA, copiloto de consulta do portfólio da imobiliária Litoral Prime (litoral de Santa Catarina).
 
