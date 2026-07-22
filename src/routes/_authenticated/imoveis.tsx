@@ -3,8 +3,8 @@ import { Building2, ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/imoveis")({
   beforeLoad: ({ context }) => {
-    // @ts-expect-error role added in parent gate context
-    if (context.role !== "admin") {
+    const role = (context as { role?: string }).role;
+    if (role !== "admin") {
       throw redirect({ to: "/", search: { denied: 1 } });
     }
   },
