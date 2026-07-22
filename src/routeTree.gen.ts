@@ -13,6 +13,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
+import { Route as AuthenticatedImoveisIndexRouteImport } from './routes/_authenticated/imoveis.index'
+import { Route as AuthenticatedImoveisNovoRouteImport } from './routes/_authenticated/imoveis.novo'
+import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -33,35 +37,85 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedImoveisRoute = AuthenticatedImoveisRouteImport.update({
+  id: '/imoveis',
+  path: '/imoveis',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedImoveisIndexRoute =
+  AuthenticatedImoveisIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedImoveisRoute,
+  } as any)
+const AuthenticatedImoveisNovoRoute =
+  AuthenticatedImoveisNovoRouteImport.update({
+    id: '/novo',
+    path: '/novo',
+    getParentRoute: () => AuthenticatedImoveisRoute,
+  } as any)
+const AuthenticatedImoveisIdRoute = AuthenticatedImoveisIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedImoveisRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/api/chat': typeof ApiChatRoute
+  '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
+  '/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/imoveis/': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
+  '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
+  '/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/imoveis': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/imoveis/$id': typeof AuthenticatedImoveisIdRoute
+  '/_authenticated/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/_authenticated/imoveis/': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/api/chat'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/imoveis'
+    | '/api/chat'
+    | '/imoveis/$id'
+    | '/imoveis/novo'
+    | '/imoveis/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/auth' | '/api/chat' | '/'
+  to:
+    | '/auth'
+    | '/api/chat'
+    | '/'
+    | '/imoveis/$id'
+    | '/imoveis/novo'
+    | '/imoveis'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/imoveis'
     | '/api/chat'
     | '/_authenticated/'
+    | '/_authenticated/imoveis/$id'
+    | '/_authenticated/imoveis/novo'
+    | '/_authenticated/imoveis/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,14 +154,59 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/imoveis': {
+      id: '/_authenticated/imoveis'
+      path: '/imoveis'
+      fullPath: '/imoveis'
+      preLoaderRoute: typeof AuthenticatedImoveisRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/imoveis/': {
+      id: '/_authenticated/imoveis/'
+      path: '/'
+      fullPath: '/imoveis/'
+      preLoaderRoute: typeof AuthenticatedImoveisIndexRouteImport
+      parentRoute: typeof AuthenticatedImoveisRoute
+    }
+    '/_authenticated/imoveis/novo': {
+      id: '/_authenticated/imoveis/novo'
+      path: '/novo'
+      fullPath: '/imoveis/novo'
+      preLoaderRoute: typeof AuthenticatedImoveisNovoRouteImport
+      parentRoute: typeof AuthenticatedImoveisRoute
+    }
+    '/_authenticated/imoveis/$id': {
+      id: '/_authenticated/imoveis/$id'
+      path: '/$id'
+      fullPath: '/imoveis/$id'
+      preLoaderRoute: typeof AuthenticatedImoveisIdRouteImport
+      parentRoute: typeof AuthenticatedImoveisRoute
+    }
   }
 }
 
+interface AuthenticatedImoveisRouteChildren {
+  AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
+  AuthenticatedImoveisNovoRoute: typeof AuthenticatedImoveisNovoRoute
+  AuthenticatedImoveisIndexRoute: typeof AuthenticatedImoveisIndexRoute
+}
+
+const AuthenticatedImoveisRouteChildren: AuthenticatedImoveisRouteChildren = {
+  AuthenticatedImoveisIdRoute: AuthenticatedImoveisIdRoute,
+  AuthenticatedImoveisNovoRoute: AuthenticatedImoveisNovoRoute,
+  AuthenticatedImoveisIndexRoute: AuthenticatedImoveisIndexRoute,
+}
+
+const AuthenticatedImoveisRouteWithChildren =
+  AuthenticatedImoveisRoute._addFileChildren(AuthenticatedImoveisRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
 

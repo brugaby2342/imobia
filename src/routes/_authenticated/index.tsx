@@ -1,10 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Plus, Building2, Loader2, LogOut, MapPin, Ruler, BedDouble, FileCheck2 } from "lucide-react";
+import { Send, Plus, Building2, Loader2, LogOut, MapPin, Ruler, BedDouble, FileCheck2, Settings, X } from "lucide-react";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/")({
+  validateSearch: (s: Record<string, unknown>) =>
+    z.object({ denied: z.coerce.number().optional() }).parse(s),
   head: () => ({
     meta: [
       { title: "ImobIA — Copiloto Litoral Prime" },
@@ -97,6 +100,13 @@ const SUGESTOES = [
 
 function Index() {
   const navigate = useNavigate();
+  const routeCtx = Route.useRouteContext() as { role?: string };
+  const isAdmin = routeCtx.role === "admin";
+  const search = Route.useSearch();
+  const [deniedVisible, setDeniedVisible] = useState<boolean>(!!search.denied);
+  useEffect(() => {
+    setDeniedVisible(!!search.denied);
+  }, [search.denied]);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -189,6 +199,15 @@ function Index() {
                 {email}
               </span>
             )}
+            {isAdmin && (
+              <Link
+                to="/imoveis"
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Gerenciar imóveis
+              </Link>
+            )}
             <button
               onClick={novaConversa}
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
@@ -211,6 +230,23 @@ function Index() {
         ref={scrollRef}
         className="mx-auto w-full max-w-4xl flex-1 overflow-y-auto px-4 py-6"
       >
+        {deniedVisible && (
+          <div className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <span>
+              Acesso restrito: apenas administradores podem gerenciar imóveis.
+            </span>
+            <button
+              onClick={() => {
+                setDeniedVisible(false);
+                navigate({ to: "/", search: {} });
+              }}
+              aria-label="Fechar"
+              className="text-amber-700 hover:text-amber-900"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
         {messages.length === 0 ? (
           <div className="mx-auto mt-8 max-w-2xl text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-md">
