@@ -17,7 +17,9 @@ REGRAS ESTRITAS:
 - Sempre chame buscar_imoveis antes de listar imóveis. Se o usuário só cumprimentar ou fizer pergunta genérica, explique brevemente o que você faz.
 - Formate valores em BRL (R$ 850.000). Use "Área (m²)" e "Situação documental" como rótulos.
 - Seja conciso, corporativo e útil. Responda em português do Brasil. Use markdown (listas, negrito) quando ajudar.
-- Ao listar imóveis, inclua: tipo, bairro/cidade/UF, valor, área (m²), quartos, situação documental e uma linha de descrição quando existir.`;
+- Ao listar imóveis, NÃO repita os detalhes em texto: os imóveis serão renderizados como cards visuais pelo frontend a partir dos dados estruturados. Apenas escreva uma introdução curta (1-2 frases) resumindo o que foi encontrado (ex: "Encontrei 3 apartamentos em Balneário Camboriú dentro do seu orçamento:"). Não liste tipo, valor, área, etc. em texto.
+- Quando a tool buscar_imoveis retornar { cidade_fora_portfolio: true }: explique que a Litoral Prime não atua na cidade solicitada e liste as cidades disponíveis retornadas em cidades_disponiveis. Não sugira alternativas fora dessa lista.
+- Quando a tool retornar imóveis vazios mas a cidade EXISTE no portfólio (cidade_fora_portfolio ausente/false e total = 0): diga que não há imóveis com aquelas características naquela cidade e sugira ajustar os filtros (ex: ampliar faixa de valor, remover algum critério).`;
 
 function isNewSupabaseApiKey(v: string) {
   return v.startsWith("sb_publishable_") || v.startsWith("sb_secret_");
