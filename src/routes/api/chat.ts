@@ -38,39 +38,79 @@ export const Route = createFileRoute("/api/chat")({
           { auth: { persistSession: false, autoRefreshToken: false, storage: undefined } },
         );
 
+        const parseNumber = (v: unknown): number | null => {
+          if (v === null || v === undefined || v === "") return null;
+          if (typeof v === "number") return Number.isFinite(v) ? v : null;
+          if (typeof v !== "string") return null;
+          let s = v.toLowerCase().trim();
+          s = s.replace(/r\$/g, "").replace(/m²|m2/g, "").replace(/\s+/g, " ").trim();
+          let multiplier = 1;
+          if (/\bmilh(ão|ões|oes)\b|\bmi\b/.test(s)) multiplier = 1_000_000;
+          else if (/\bmil\b|\bk\b/.test(s)) multiplier = 1_000;
+          s = s.replace(/\bmilh(ão|ões|oes)\b|\bmi\b|\bmil\b|\bk\b/g, "").trim();
+          if (s.includes(",")) {
+            s = s.replace(/\./g, "").replace(",", ".");
+          } else {
+            const parts = s.split(".");
+            if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+              s = s.replace(/\./g, "");
+            }
+          }
+          s = s.replace(/[^0-9.\-]/g, "");
+          if (!s) return null;
+          const n = Number(s);
+          return Number.isFinite(n) ? n * multiplier : null;
+        };
+        const parseInt10 = (v: unknown): number | null => {
+          const n = parseNumber(v);
+          return n === null ? null : Math.trunc(n);
+        };
+        const numish = z.union([z.number(), z.string()]).nullish();
+        const strish = z.string().nullish();
+
         const buscarImoveis = tool({
           description:
-            "Busca imóveis no portfólio da imobiliária. Aplique apenas os filtros mencionados pelo usuário; deixe os outros indefinidos. Retorna até 20 imóveis.",
+            "Busca imóveis no portfólio da imobiliária. Aplique apenas os filtros mencionados pelo usuário; deixe os outros como null. Aceita valores em texto (ex: '800 mil', 'R$ 1,2 milhão'). Retorna até 20 imóveis.",
           inputSchema: z.object({
-            tipo: z.string().nullable().describe("Ex: apartamento, casa, cobertura, terreno"),
-            cidade: z.string().nullable(),
-            bairro: z.string().nullable(),
-            estado: z.string().nullable().describe("UF, ex: SC"),
-            valor_min: z.number().nullable(),
-            valor_max: z.number().nullable(),
-            area_min: z.number().nullable().describe("Área mínima em m²"),
-            area_max: z.number().nullable().describe("Área máxima em m²"),
-            quartos_min: z.number().nullable(),
-            status_documentacao: z.string().nullable(),
+            tipo: strish.describe("Ex: apartamento, casa, cobertura, terreno"),
+            cidade: strish,
+            bairro: strish,
+            estado: strish.describe("UF, ex: SC"),
+            valor_min: numish,
+            valor_max: numish,
+            area_min: numish.describe("Área mínima em m²"),
+            area_max: numish.describe("Área máxima em m²"),
+            quartos_min: numish,
+            status_documentacao: strish,
           }),
           execute: async (args) => {
+            const tipo = args.tipo?.trim() || null;
+            const cidade = args.cidade?.trim() || null;
+            const bairro = args.bairro?.trim() || null;
+            const estado = args.estado?.trim() || null;
+            const statusDoc = args.status_documentacao?.trim() || null;
+            const valorMin = parseNumber(args.valor_min);
+            const valorMax = parseNumber(args.valor_max);
+            const areaMin = parseNumber(args.area_min);
+            const areaMax = parseNumber(args.area_max);
+            const quartosMin = parseInt10(args.quartos_min);
+
             let q = supabase
               .from("imoveis")
               .select(
                 "id, tipo, bairro, cidade, estado, valor, area_m2, quartos, status_documentacao, descricao",
               )
               .limit(20);
-            if (args.tipo) q = q.ilike("tipo", `%${args.tipo}%`);
-            if (args.cidade) q = q.ilike("cidade", `%${args.cidade}%`);
-            if (args.bairro) q = q.ilike("bairro", `%${args.bairro}%`);
-            if (args.estado) q = q.ilike("estado", `%${args.estado}%`);
-            if (args.valor_min != null) q = q.gte("valor", args.valor_min);
-            if (args.valor_max != null) q = q.lte("valor", args.valor_max);
-            if (args.area_min != null) q = q.gte("area_m2", args.area_min);
-            if (args.area_max != null) q = q.lte("area_m2", args.area_max);
-            if (args.quartos_min != null) q = q.gte("quartos", args.quartos_min);
-            if (args.status_documentacao)
-              q = q.ilike("status_documentacao", `%${args.status_documentacao}%`);
+            if (tipo) q = q.ilike("tipo", `%${tipo}%`);
+            if (cidade) q = q.ilike("cidade", `%${cidade}%`);
+            if (bairro) q = q.ilike("bairro", `%${bairro}%`);
+            if (estado) q = q.ilike("estado", `%${estado}%`);
+            if (valorMin !== null) q = q.gte("valor", valorMin);
+            if (valorMax !== null) q = q.lte("valor", valorMax);
+            if (areaMin !== null) q = q.gte("area_m2", areaMin);
+            if (areaMax !== null) q = q.lte("area_m2", areaMax);
+            if (quartosMin !== null) q = q.gte("quartos", quartosMin);
+            if (statusDoc) q = q.ilike("status_documentacao", `%${statusDoc}%`);
             const { data, error } = await q;
             if (error) return { erro: error.message, imoveis: [] };
             return { total: data?.length ?? 0, imoveis: data ?? [] };
