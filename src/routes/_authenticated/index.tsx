@@ -199,6 +199,15 @@ function Index() {
                 {email}
               </span>
             )}
+            {isAdmin && (
+              <Link
+                to="/imoveis"
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Gerenciar imóveis
+              </Link>
+            )}
             <button
               onClick={novaConversa}
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
