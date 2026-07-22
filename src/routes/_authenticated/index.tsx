@@ -6,6 +6,8 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/")({
+  validateSearch: (s: Record<string, unknown>) =>
+    z.object({ denied: z.coerce.number().optional() }).parse(s),
   head: () => ({
     meta: [
       { title: "ImobIA — Copiloto Litoral Prime" },
