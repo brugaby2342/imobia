@@ -238,25 +238,31 @@ function Index() {
         ) : (
           <div className="space-y-4">
             {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={
-                    m.role === "user"
-                      ? "max-w-[85%] rounded-2xl rounded-br-sm bg-blue-700 px-4 py-2.5 text-sm text-white shadow-sm"
-                      : "max-w-[85%] rounded-2xl rounded-bl-sm border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm"
-                  }
-                >
-                  {m.role === "assistant" ? (
-                    <div className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-strong:text-slate-900">
-                      <ReactMarkdown>{m.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{m.content}</p>
-                  )}
-                </div>
+              <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+                {(m.role === "user" || m.content) && (
+                  <div
+                    className={
+                      m.role === "user"
+                        ? "max-w-[85%] rounded-2xl rounded-br-sm bg-blue-700 px-4 py-2.5 text-sm text-white shadow-sm"
+                        : "max-w-[85%] rounded-2xl rounded-bl-sm border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm"
+                    }
+                  >
+                    {m.role === "assistant" ? (
+                      <div className="prose prose-sm max-w-none prose-headings:mt-2 prose-headings:mb-1 prose-p:my-1 prose-ul:my-1 prose-strong:text-slate-900">
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{m.content}</p>
+                    )}
+                  </div>
+                )}
+                {m.role === "assistant" && m.imoveis && m.imoveis.length > 0 && (
+                  <div className="mt-3 grid w-full gap-3 sm:grid-cols-2">
+                    {m.imoveis.map((im) => (
+                      <ImovelCard key={String(im.id)} im={im} />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             {loading && (
