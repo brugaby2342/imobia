@@ -2,6 +2,48 @@
   "projeto": "ImobIA",
   "pendencias": [
     "Corrigir a exibição de \"1 quartos\" para o singular em telas de listagem e detalhes.",
-    "Fixar o estado SC no formulário, garantindo que o valor seja preservado e exibido corretamente."
-  ]
+    "Fixar o estado SC no formulário, garantindo que o valor seja preservado e exibido corretamente.",
+    "Aplicar migration para corrigir os ids auto-gerados nas tabelas imovel_fotos e documentos, que estavam sem default/sequence e causam erro de duplicate key value violates unique constraint.",
+    "Implementar a exibição da foto do imóvel nos cards de listagem."
+  ],
+  "correcoes_de_rumo": [
+    "O upload de documentos não deve seguir o fluxo de um imóvel específico; os documentos são independentes e devem ser cadastrados separadamente.",
+    "É necessário distinguir claramente entre documentos institucionais e documentos de imóvel no processo de cadastro e organização."
+  ],
+  "pendencias_documentos_2307": {
+    "data": "23/07/2026",
+    "plano_execucao_priorizado": [
+      {
+        "prioridade": "alta",
+        "item": "Corrigir IDs auto-gerados em imovel_fotos e documentos (bug ativo, causa erro duplicate key).",
+        "observacao": "Migration pendente por falta de créditos Lovable."
+      },
+      {
+        "prioridade": "alta",
+        "item": "Criar módulo independente de documentos (rota própria, formulário com vínculo opcional a imóvel), distinguindo documentos institucionais de documentos de imóvel."
+      },
+      {
+        "prioridade": "media",
+        "item": "Exibir documentos no detalhe do imóvel em modo somente leitura, sem formulário duplicado."
+      },
+      {
+        "prioridade": "media",
+        "item": "Ajustar permissões e organização da interface (admin, agrupamento por tipo e vínculo)."
+      },
+      {
+        "prioridade": "baixa",
+        "item": "Melhorar UX de upload (validações, preview, mensagens de status)."
+      }
+    ],
+    "execucao": "Via Lovable (prompt já formulado em conversa anterior), não via Copilot/VS Code, para evitar duas fontes de mudança no mesmo código."
+  },
+  "decisao_modelagem_2307_documentos": {
+    "data": "23/07/2026",
+    "descricao": "Os documentos da tabela documentos foram redesenhados para serem independentes de imóveis e não mais vinculados obrigatoriamente a um imóvel específico.",
+    "motivo": "Documentos institucionais (manual do corretor, guia de regulamentação, regulamento de condomínio genérico) não pertencem a nenhum imóvel específico, então amarrar todo documento a um imóvel não refletia o modelo real de negócio da imobiliária.",
+    "implementacao": [
+      "Nova tela /documentos (admin-only) com formulário de cadastro incluindo campo opcional \"imóvel relacionado\" (select buscando em listImoveis).",
+      "A tela /imoveis/$id passou a mostrar apenas uma listagem read-only dos documentos vinculados àquele imóvel específico, sem formulário de upload duplicado."
+    ]
+  }
 }
