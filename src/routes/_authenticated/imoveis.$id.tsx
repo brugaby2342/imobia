@@ -10,6 +10,7 @@ import {
   formToPayload,
   type ImovelForm,
 } from "@/components/ImovelForm";
+import { FotosImovel, DocumentosImovel } from "@/components/MidiaImovel";
 
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   component: EditarImovel,
