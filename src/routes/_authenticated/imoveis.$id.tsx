@@ -81,6 +81,8 @@ function EditarImovel() {
         onSubmit={onSubmit}
         submitLabel="Salvar alterações"
       />
+      <FotosImovel imovelId={numericId} />
+      <DocumentosImovel imovelId={numericId} />
     </div>
   );
 }
