@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "memoria": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_FILE_PATH": "${workspaceFolder}/docs/memoria-projeto.json"
+      }
+    }
+  }
+}
