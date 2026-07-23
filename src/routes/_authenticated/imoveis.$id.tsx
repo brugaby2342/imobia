@@ -10,6 +10,7 @@ import {
   formToPayload,
   type ImovelForm,
 } from "@/components/ImovelForm";
+import { FotosImovel, DocumentosImovel } from "@/components/MidiaImovel";
 
 export const Route = createFileRoute("/_authenticated/imoveis/$id")({
   component: EditarImovel,
@@ -80,6 +81,8 @@ function EditarImovel() {
         onSubmit={onSubmit}
         submitLabel="Salvar alterações"
       />
+      <FotosImovel imovelId={numericId} />
+      <DocumentosImovel imovelId={numericId} />
     </div>
   );
 }

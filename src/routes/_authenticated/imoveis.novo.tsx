@@ -36,6 +36,9 @@ function NovoImovel() {
         onSubmit={onSubmit}
         submitLabel="Cadastrar"
       />
+      <p className="mt-4 text-xs text-slate-500">
+        Fotos e documentos podem ser enviados após salvar o imóvel, na tela de edição.
+      </p>
     </div>
   );
 }
