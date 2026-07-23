@@ -1,0 +1,7 @@
+{
+  "projeto": "ImobIA",
+  "pendencias": [
+    "Corrigir a exibição de \"1 quartos\" para o singular em telas de listagem e detalhes.",
+    "Fixar o estado SC no formulário, garantindo que o valor seja preservado e exibido corretamente."
+  ]
+}
