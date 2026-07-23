@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           caminho_arquivo: string
           categoria: string
+          conteudo_text: string | null
           descricao: string | null
           id: number
           imovel_id: number | null
@@ -26,6 +27,7 @@ export type Database = {
         Insert: {
           caminho_arquivo: string
           categoria: string
+          conteudo_text?: string | null
           descricao?: string | null
           id?: number
           imovel_id?: number | null
@@ -34,6 +36,7 @@ export type Database = {
         Update: {
           caminho_arquivo?: string
           categoria?: string
+          conteudo_text?: string | null
           descricao?: string | null
           id?: number
           imovel_id?: number | null
