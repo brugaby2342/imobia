@@ -16,6 +16,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedImoveisIndexRouteImport } from './routes/_authenticated/imoveis.index'
+import { Route as AuthenticatedDocumentosIndexRouteImport } from './routes/_authenticated/documentos.index'
 import { Route as AuthenticatedImoveisNovoRouteImport } from './routes/_authenticated/imoveis.novo'
 import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
 
@@ -54,6 +55,12 @@ const AuthenticatedImoveisIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedImoveisRoute,
   } as any)
+const AuthenticatedDocumentosIndexRoute =
+  AuthenticatedDocumentosIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedDocumentosRoute,
+  } as any)
 const AuthenticatedImoveisNovoRoute =
   AuthenticatedImoveisNovoRouteImport.update({
     id: '/novo',
@@ -69,32 +76,34 @@ const AuthenticatedImoveisIdRoute = AuthenticatedImoveisIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
-  '/documentos': typeof AuthenticatedDocumentosRoute
+  '/documentos': typeof AuthenticatedDocumentosRouteWithChildren
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/documentos/': typeof AuthenticatedDocumentosIndexRoute
   '/imoveis/': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
-  '/documentos': typeof AuthenticatedDocumentosRoute
   '/api/chat': typeof ApiChatRoute
   '/': typeof AuthenticatedIndexRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/documentos': typeof AuthenticatedDocumentosIndexRoute
   '/imoveis': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
+  '/_authenticated/documentos': typeof AuthenticatedDocumentosRouteWithChildren
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/_authenticated/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/_authenticated/documentos/': typeof AuthenticatedDocumentosIndexRoute
   '/_authenticated/imoveis/': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRouteTypes {
@@ -107,15 +116,16 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/imoveis/$id'
     | '/imoveis/novo'
+    | '/documentos/'
     | '/imoveis/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
-    | '/documentos'
     | '/api/chat'
     | '/'
     | '/imoveis/$id'
     | '/imoveis/novo'
+    | '/documentos'
     | '/imoveis'
   id:
     | '__root__'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/'
     | '/_authenticated/imoveis/$id'
     | '/_authenticated/imoveis/novo'
+    | '/_authenticated/documentos/'
     | '/_authenticated/imoveis/'
   fileRoutesById: FileRoutesById
 }
@@ -187,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImoveisIndexRouteImport
       parentRoute: typeof AuthenticatedImoveisRoute
     }
+    '/_authenticated/documentos/': {
+      id: '/_authenticated/documentos/'
+      path: '/'
+      fullPath: '/documentos/'
+      preLoaderRoute: typeof AuthenticatedDocumentosIndexRouteImport
+      parentRoute: typeof AuthenticatedDocumentosRoute
+    }
     '/_authenticated/imoveis/novo': {
       id: '/_authenticated/imoveis/novo'
       path: '/novo'
@@ -204,6 +222,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedDocumentosRouteChildren {
+  AuthenticatedDocumentosIndexRoute: typeof AuthenticatedDocumentosIndexRoute
+}
+
+const AuthenticatedDocumentosRouteChildren: AuthenticatedDocumentosRouteChildren =
+  {
+    AuthenticatedDocumentosIndexRoute: AuthenticatedDocumentosIndexRoute,
+  }
+
+const AuthenticatedDocumentosRouteWithChildren =
+  AuthenticatedDocumentosRoute._addFileChildren(
+    AuthenticatedDocumentosRouteChildren,
+  )
+
 interface AuthenticatedImoveisRouteChildren {
   AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
   AuthenticatedImoveisNovoRoute: typeof AuthenticatedImoveisNovoRoute
@@ -220,13 +252,13 @@ const AuthenticatedImoveisRouteWithChildren =
   AuthenticatedImoveisRoute._addFileChildren(AuthenticatedImoveisRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
+  AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRouteWithChildren
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
+  AuthenticatedDocumentosRoute: AuthenticatedDocumentosRouteWithChildren,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
@@ -242,3 +274,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
