@@ -14,7 +14,9 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthenticatedImoveisRouteImport } from './routes/_authenticated/imoveis'
+import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedImoveisIndexRouteImport } from './routes/_authenticated/imoveis.index'
+import { Route as AuthenticatedDocumentosIndexRouteImport } from './routes/_authenticated/documentos.index'
 import { Route as AuthenticatedImoveisNovoRouteImport } from './routes/_authenticated/imoveis.novo'
 import { Route as AuthenticatedImoveisIdRouteImport } from './routes/_authenticated/imoveis.$id'
 
@@ -42,11 +44,22 @@ const AuthenticatedImoveisRoute = AuthenticatedImoveisRouteImport.update({
   path: '/imoveis',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
+  id: '/documentos',
+  path: '/documentos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedImoveisIndexRoute =
   AuthenticatedImoveisIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedImoveisRoute,
+  } as any)
+const AuthenticatedDocumentosIndexRoute =
+  AuthenticatedDocumentosIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedDocumentosRoute,
   } as any)
 const AuthenticatedImoveisNovoRoute =
   AuthenticatedImoveisNovoRouteImport.update({
@@ -63,10 +76,12 @@ const AuthenticatedImoveisIdRoute = AuthenticatedImoveisIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AuthenticatedIndexRoute
   '/auth': typeof AuthRoute
+  '/documentos': typeof AuthenticatedDocumentosRouteWithChildren
   '/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/documentos/': typeof AuthenticatedDocumentosIndexRoute
   '/imoveis/': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRoutesByTo {
@@ -75,17 +90,20 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/documentos': typeof AuthenticatedDocumentosIndexRoute
   '/imoveis': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/documentos': typeof AuthenticatedDocumentosRouteWithChildren
   '/_authenticated/imoveis': typeof AuthenticatedImoveisRouteWithChildren
   '/api/chat': typeof ApiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/imoveis/$id': typeof AuthenticatedImoveisIdRoute
   '/_authenticated/imoveis/novo': typeof AuthenticatedImoveisNovoRoute
+  '/_authenticated/documentos/': typeof AuthenticatedDocumentosIndexRoute
   '/_authenticated/imoveis/': typeof AuthenticatedImoveisIndexRoute
 }
 export interface FileRouteTypes {
@@ -93,10 +111,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/documentos'
     | '/imoveis'
     | '/api/chat'
     | '/imoveis/$id'
     | '/imoveis/novo'
+    | '/documentos/'
     | '/imoveis/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -105,16 +125,19 @@ export interface FileRouteTypes {
     | '/'
     | '/imoveis/$id'
     | '/imoveis/novo'
+    | '/documentos'
     | '/imoveis'
   id:
     | '__root__'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/documentos'
     | '/_authenticated/imoveis'
     | '/api/chat'
     | '/_authenticated/'
     | '/_authenticated/imoveis/$id'
     | '/_authenticated/imoveis/novo'
+    | '/_authenticated/documentos/'
     | '/_authenticated/imoveis/'
   fileRoutesById: FileRoutesById
 }
@@ -161,12 +184,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImoveisRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/documentos': {
+      id: '/_authenticated/documentos'
+      path: '/documentos'
+      fullPath: '/documentos'
+      preLoaderRoute: typeof AuthenticatedDocumentosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/imoveis/': {
       id: '/_authenticated/imoveis/'
       path: '/'
       fullPath: '/imoveis/'
       preLoaderRoute: typeof AuthenticatedImoveisIndexRouteImport
       parentRoute: typeof AuthenticatedImoveisRoute
+    }
+    '/_authenticated/documentos/': {
+      id: '/_authenticated/documentos/'
+      path: '/'
+      fullPath: '/documentos/'
+      preLoaderRoute: typeof AuthenticatedDocumentosIndexRouteImport
+      parentRoute: typeof AuthenticatedDocumentosRoute
     }
     '/_authenticated/imoveis/novo': {
       id: '/_authenticated/imoveis/novo'
@@ -185,6 +222,20 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedDocumentosRouteChildren {
+  AuthenticatedDocumentosIndexRoute: typeof AuthenticatedDocumentosIndexRoute
+}
+
+const AuthenticatedDocumentosRouteChildren: AuthenticatedDocumentosRouteChildren =
+  {
+    AuthenticatedDocumentosIndexRoute: AuthenticatedDocumentosIndexRoute,
+  }
+
+const AuthenticatedDocumentosRouteWithChildren =
+  AuthenticatedDocumentosRoute._addFileChildren(
+    AuthenticatedDocumentosRouteChildren,
+  )
+
 interface AuthenticatedImoveisRouteChildren {
   AuthenticatedImoveisIdRoute: typeof AuthenticatedImoveisIdRoute
   AuthenticatedImoveisNovoRoute: typeof AuthenticatedImoveisNovoRoute
@@ -201,11 +252,13 @@ const AuthenticatedImoveisRouteWithChildren =
   AuthenticatedImoveisRoute._addFileChildren(AuthenticatedImoveisRouteChildren)
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRouteWithChildren
   AuthenticatedImoveisRoute: typeof AuthenticatedImoveisRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDocumentosRoute: AuthenticatedDocumentosRouteWithChildren,
   AuthenticatedImoveisRoute: AuthenticatedImoveisRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
 }
