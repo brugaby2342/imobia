@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Send, Plus, Building2, Loader2, LogOut, MapPin, Ruler, BedDouble, FileCheck2, Settings, X } from "lucide-react";
+import { Send, Plus, Building2, Loader2, LogOut, MapPin, Ruler, BedDouble, FileCheck2, Settings, X, FileText } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 
