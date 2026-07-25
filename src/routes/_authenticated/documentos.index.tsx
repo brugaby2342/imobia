@@ -430,8 +430,12 @@ function DocumentosPage() {
           </div>
         )}
       </section>
+      )}
 
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section
+        ref={listaRef}
+        className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <FileText className="h-4 w-4 text-blue-700" />
           <h3 className="text-sm font-semibold text-slate-900">
