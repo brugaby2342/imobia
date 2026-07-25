@@ -2,7 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Upload, Trash2, FileText, Download, X, FilePlus2 } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  Trash2,
+  FileText,
+  Download,
+  X,
+  FilePlus2,
+  CheckCircle2,
+  Plus,
+  List,
+} from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { listImoveis } from "@/lib/imoveis.functions";
 
