@@ -2,7 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Upload, Trash2, FileText, Download, X, FilePlus2 } from "lucide-react";
+import {
+  Loader2,
+  Upload,
+  Trash2,
+  FileText,
+  Download,
+  X,
+  FilePlus2,
+  CheckCircle2,
+  Plus,
+  List,
+} from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { listImoveis } from "@/lib/imoveis.functions";
 
@@ -28,7 +40,17 @@ export const Route = createFileRoute("/_authenticated/documentos/")({
   component: DocumentosPage,
 });
 
-function sanitizeBase(name: string): { base: string; ext: string } {
+/** Decodifica percent-encoding (ex: "%20") ANTES de sanitizar, para não virar "_20". */
+function safeDecode(name: string): string {
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+}
+
+function sanitizeBase(rawName: string): { base: string; ext: string } {
+  const name = safeDecode(rawName);
   const dot = name.lastIndexOf(".");
   const rawExt = dot >= 0 ? name.slice(dot + 1) : "";
   const rawBase = dot >= 0 ? name.slice(0, dot) : name;
@@ -68,6 +90,8 @@ type Pending = {
   titulo: string;
 };
 
+type Criado = { id: number; titulo: string };
+
 function DocumentosPage() {
   const list = useServerFn(listImoveis);
   const { data: imoveis } = useQuery({
@@ -85,7 +109,9 @@ function DocumentosPage() {
   const [descricao, setDescricao] = useState("");
   const [imovelId, setImovelId] = useState<string>("");
   const [filtroImovel, setFiltroImovel] = useState<string>("todos");
+  const [sucesso, setSucesso] = useState<Criado[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listaRef = useRef<HTMLElement>(null);
 
   async function load() {
     setLoadingDocs(true);
@@ -121,8 +147,9 @@ function DocumentosPage() {
         setErr(`${file.name} excede 5 MB.`);
         continue;
       }
-      const dot = file.name.lastIndexOf(".");
-      const defaultTitle = (dot >= 0 ? file.name.slice(0, dot) : file.name).replace(/[_-]+/g, " ").trim();
+      const decoded = safeDecode(file.name);
+      const dot = decoded.lastIndexOf(".");
+      const defaultTitle = (dot >= 0 ? decoded.slice(0, dot) : decoded).replace(/[_-]+/g, " ").trim();
       next.push({ file, titulo: defaultTitle });
     }
     if (next.length) setPending((p) => [...p, ...next]);
@@ -141,39 +168,66 @@ function DocumentosPage() {
     if (!pending.length) return;
     if (!categoria.trim()) {
       setErr("Informe a categoria antes de enviar.");
+      toast.error("Informe a categoria antes de enviar.");
       return;
     }
     if (pending.some((p) => !p.titulo.trim())) {
       setErr("Todos os arquivos precisam de um título.");
+      toast.error("Todos os arquivos precisam de um título.");
       return;
     }
     setUploading(true);
     const link = imovelId ? Number(imovelId) : null;
-    const uploaded: string[] = [];
+    const criados: Criado[] = [];
     try {
       for (const p of pending) {
         const path = await uploadWithCollision(p.file);
-        uploaded.push(path);
-        const { error: insErr } = await supabase.from("documentos").insert({
-          titulo: p.titulo.trim(),
-          categoria: categoria.trim(),
-          descricao: descricao.trim() || null,
-          caminho_arquivo: path,
-          imovel_id: link,
-        });
+        const { data: inserted, error: insErr } = await supabase
+          .from("documentos")
+          .insert({
+            titulo: p.titulo.trim(),
+            categoria: categoria.trim(),
+            descricao: descricao.trim() || null,
+            caminho_arquivo: path,
+            imovel_id: link,
+          })
+          .select("id,titulo")
+          .single();
         if (insErr) {
           await supabase.storage.from(DOCS_BUCKET).remove([path]);
           throw new Error(insErr.message);
         }
+        criados.push({ id: inserted.id, titulo: inserted.titulo });
       }
       setPending([]);
       setDescricao("");
+      setSucesso(criados);
       await load();
+      toast.success(
+        criados.length === 1
+          ? `Documento #${criados[0].id} enviado com sucesso.`
+          : `${criados.length} documentos enviados com sucesso.`,
+      );
     } catch (e) {
       setErr((e as Error).message);
+      toast.error(`Falha ao enviar documento: ${(e as Error).message}`);
     } finally {
       setUploading(false);
     }
+  }
+
+  function cadastrarOutro() {
+    setSucesso(null);
+    setErr(null);
+    setPending([]);
+    setCategoria("");
+    setDescricao("");
+    setImovelId("");
+  }
+
+  function voltarListagem() {
+    setSucesso(null);
+    listaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function abrir(row: DocRow) {
@@ -182,6 +236,7 @@ function DocumentosPage() {
       .createSignedUrl(row.caminho_arquivo, 60);
     if (error) {
       setErr(error.message);
+      toast.error(`Falha ao abrir documento: ${error.message}`);
       return;
     }
     window.open(data.signedUrl, "_blank", "noopener");
@@ -192,10 +247,12 @@ function DocumentosPage() {
     const { error: delErr } = await supabase.from("documentos").delete().eq("id", row.id);
     if (delErr) {
       setErr(delErr.message);
+      toast.error(`Falha ao remover documento: ${delErr.message}`);
       return;
     }
     await supabase.storage.from(DOCS_BUCKET).remove([row.caminho_arquivo]);
     await load();
+    toast.success("Documento removido.");
   }
 
   const filteredDocs = useMemo(() => {
@@ -213,11 +270,51 @@ function DocumentosPage() {
     <div>
       <h2 className="mb-4 text-lg font-semibold text-slate-900">Documentos</h2>
 
+      {sucesso ? (
+        <section className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 shadow-sm">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+            <div>
+              <h3 className="text-base font-semibold text-emerald-900">
+                {sucesso.length === 1
+                  ? "Documento cadastrado com sucesso"
+                  : `${sucesso.length} documentos cadastrados com sucesso`}
+              </h3>
+              <ul className="mt-1 list-inside list-disc text-sm text-emerald-800">
+                {sucesso.map((d) => (
+                  <li key={d.id}>
+                    #{d.id} · {d.titulo}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={cadastrarOutro}
+              className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-br from-blue-600 to-blue-800 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:brightness-110"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Cadastrar outro documento
+            </button>
+            <button
+              type="button"
+              onClick={voltarListagem}
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <List className="h-3.5 w-3.5" />
+              Voltar à listagem
+            </button>
+          </div>
+        </section>
+      ) : (
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-2">
           <FilePlus2 className="h-4 w-4 text-blue-700" />
           <h3 className="text-sm font-semibold text-slate-900">Enviar documentos</h3>
         </div>
+
 
         <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
@@ -333,8 +430,12 @@ function DocumentosPage() {
           </div>
         )}
       </section>
+      )}
 
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section
+        ref={listaRef}
+        className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <FileText className="h-4 w-4 text-blue-700" />
           <h3 className="text-sm font-semibold text-slate-900">

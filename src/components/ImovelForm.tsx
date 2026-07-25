@@ -17,11 +17,13 @@ export type ImovelForm = {
   descricao: string;
 };
 
+export const ESTADO_FIXO = "SC";
+
 export const emptyForm: ImovelForm = {
   tipo: "",
   bairro: "",
   cidade: "",
-  estado: "",
+  estado: ESTADO_FIXO,
   valor: "",
   area_m2: "",
   quartos: "",
@@ -71,7 +73,7 @@ export function ImovelFormView({
   onSubmit: (f: ImovelForm) => Promise<void> | void;
   submitLabel: string;
 }) {
-  const [form, setForm] = useState<ImovelForm>(initial);
+  const [form, setForm] = useState<ImovelForm>({ ...initial, estado: ESTADO_FIXO });
   const [localErrs, setLocalErrs] = useState<string[]>([]);
   const listStatus = useServerFn(listStatusDocumentacao);
   const { data: statusOptions } = useQuery({
@@ -150,16 +152,17 @@ export function ImovelFormView({
           />
         </div>
         <div>
-          <label className={lbl}>
-            Estado <span className="text-red-600">*</span>
-          </label>
+          <label className={lbl}>Estado</label>
           <input
-            className={inp}
-            value={form.estado}
-            onChange={upd("estado")}
-            placeholder="Ex: SC"
-            required
+            className={`${inp} cursor-not-allowed bg-slate-50 text-slate-500`}
+            value={ESTADO_FIXO}
+            readOnly
+            aria-readonly="true"
+            tabIndex={-1}
           />
+          <p className="mt-1 text-[11px] text-slate-500">
+            A Litoral Prime atua apenas no litoral catarinense.
+          </p>
         </div>
         <div>
           <label className={lbl}>

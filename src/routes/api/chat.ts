@@ -136,7 +136,7 @@ export const Route = createFileRoute("/api/chat")({
             let q = supabase
               .from("imoveis")
               .select(
-                "id, tipo, bairro, cidade, estado, valor, area_m2, quartos, status_documentacao, descricao",
+                "id, tipo, bairro, cidade, estado, valor, area_m2, quartos, status_documentacao, descricao, imovel_fotos(caminho_arquivo, ordem, id)",
               )
               .limit(20);
             if (tipo) q = q.ilike("tipo", `%${tipo}%`);
@@ -191,6 +191,7 @@ export const Route = createFileRoute("/api/chat")({
             tools: { buscar_imoveis: buscarImoveis },
             stopWhen: stepCountIs(5),
           });
+          type FotoLite = { caminho_arquivo: string | null; ordem: number | null; id?: number };
           type ImovelRow = {
             id: string | number;
             tipo: string | null;
@@ -202,6 +203,8 @@ export const Route = createFileRoute("/api/chat")({
             quartos: number | null;
             status_documentacao: string | null;
             descricao: string | null;
+            imovel_fotos?: FotoLite[] | null;
+            foto?: string | null;
           };
           const imoveis: ImovelRow[] = [];
           const seen = new Set<string>();
@@ -215,7 +218,14 @@ export const Route = createFileRoute("/api/chat")({
                 const key = String(im.id);
                 if (seen.has(key)) continue;
                 seen.add(key);
-                imoveis.push(im);
+                const fotos = [...(im.imovel_fotos ?? [])]
+                  .filter((f) => !!f.caminho_arquivo)
+                  .sort(
+                    (a, b) =>
+                      (a.ordem ?? 9999) - (b.ordem ?? 9999) || (a.id ?? 0) - (b.id ?? 0),
+                  );
+                const { imovel_fotos: _drop, ...rest } = im;
+                imoveis.push({ ...rest, foto: fotos[0]?.caminho_arquivo ?? null });
               }
             }
           }
