@@ -136,7 +136,7 @@ export const Route = createFileRoute("/api/chat")({
             let q = supabase
               .from("imoveis")
               .select(
-                "id, tipo, bairro, cidade, estado, valor, area_m2, quartos, status_documentacao, descricao",
+                "id, tipo, bairro, cidade, estado, valor, area_m2, quartos, status_documentacao, descricao, imovel_fotos(caminho_arquivo, ordem, id)",
               )
               .limit(20);
             if (tipo) q = q.ilike("tipo", `%${tipo}%`);
