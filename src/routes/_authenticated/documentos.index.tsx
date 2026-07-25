@@ -90,6 +90,8 @@ type Pending = {
   titulo: string;
 };
 
+type Criado = { id: number; titulo: string };
+
 function DocumentosPage() {
   const list = useServerFn(listImoveis);
   const { data: imoveis } = useQuery({
