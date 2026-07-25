@@ -143,8 +143,9 @@ function DocumentosPage() {
         setErr(`${file.name} excede 5 MB.`);
         continue;
       }
-      const dot = file.name.lastIndexOf(".");
-      const defaultTitle = (dot >= 0 ? file.name.slice(0, dot) : file.name).replace(/[_-]+/g, " ").trim();
+      const decoded = safeDecode(file.name);
+      const dot = decoded.lastIndexOf(".");
+      const defaultTitle = (dot >= 0 ? decoded.slice(0, dot) : decoded).replace(/[_-]+/g, " ").trim();
       next.push({ file, titulo: defaultTitle });
     }
     if (next.length) setPending((p) => [...p, ...next]);
