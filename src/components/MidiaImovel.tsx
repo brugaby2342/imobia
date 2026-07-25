@@ -106,6 +106,7 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     if (!pending.length) return;
     setErr(null);
     setUploading(true);
+    const count = pending.length;
     try {
       // Buscar sequencial atual, tanto dos caminhos no banco quanto dos objetos no bucket
       const dbPaths = fotos.map((f) => f.caminho_arquivo);
@@ -134,8 +135,10 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
       }
       setPending([]);
       await load();
+      toast.success(count === 1 ? "Foto enviada com sucesso." : `${count} fotos enviadas com sucesso.`);
     } catch (e) {
       setErr((e as Error).message);
+      toast.error(`Falha ao enviar foto: ${(e as Error).message}`);
     } finally {
       setUploading(false);
     }
@@ -147,10 +150,12 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     const { error: delDbErr } = await supabase.from("imovel_fotos").delete().eq("id", row.id);
     if (delDbErr) {
       setErr(delDbErr.message);
+      toast.error(`Falha ao remover foto: ${delDbErr.message}`);
       return;
     }
     await supabase.storage.from(FOTOS_BUCKET).remove([row.caminho_arquivo]);
     await load();
+    toast.success("Foto removida.");
   }
 
   return (
