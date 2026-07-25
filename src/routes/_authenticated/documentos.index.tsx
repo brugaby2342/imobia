@@ -107,7 +107,9 @@ function DocumentosPage() {
   const [descricao, setDescricao] = useState("");
   const [imovelId, setImovelId] = useState<string>("");
   const [filtroImovel, setFiltroImovel] = useState<string>("todos");
+  const [sucesso, setSucesso] = useState<Criado[] | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listaRef = useRef<HTMLElement>(null);
 
   async function load() {
     setLoadingDocs(true);
@@ -164,39 +166,66 @@ function DocumentosPage() {
     if (!pending.length) return;
     if (!categoria.trim()) {
       setErr("Informe a categoria antes de enviar.");
+      toast.error("Informe a categoria antes de enviar.");
       return;
     }
     if (pending.some((p) => !p.titulo.trim())) {
       setErr("Todos os arquivos precisam de um título.");
+      toast.error("Todos os arquivos precisam de um título.");
       return;
     }
     setUploading(true);
     const link = imovelId ? Number(imovelId) : null;
-    const uploaded: string[] = [];
+    const criados: Criado[] = [];
     try {
       for (const p of pending) {
         const path = await uploadWithCollision(p.file);
-        uploaded.push(path);
-        const { error: insErr } = await supabase.from("documentos").insert({
-          titulo: p.titulo.trim(),
-          categoria: categoria.trim(),
-          descricao: descricao.trim() || null,
-          caminho_arquivo: path,
-          imovel_id: link,
-        });
+        const { data: inserted, error: insErr } = await supabase
+          .from("documentos")
+          .insert({
+            titulo: p.titulo.trim(),
+            categoria: categoria.trim(),
+            descricao: descricao.trim() || null,
+            caminho_arquivo: path,
+            imovel_id: link,
+          })
+          .select("id,titulo")
+          .single();
         if (insErr) {
           await supabase.storage.from(DOCS_BUCKET).remove([path]);
           throw new Error(insErr.message);
         }
+        criados.push({ id: inserted.id, titulo: inserted.titulo });
       }
       setPending([]);
       setDescricao("");
+      setSucesso(criados);
       await load();
+      toast.success(
+        criados.length === 1
+          ? `Documento #${criados[0].id} enviado com sucesso.`
+          : `${criados.length} documentos enviados com sucesso.`,
+      );
     } catch (e) {
       setErr((e as Error).message);
+      toast.error(`Falha ao enviar documento: ${(e as Error).message}`);
     } finally {
       setUploading(false);
     }
+  }
+
+  function cadastrarOutro() {
+    setSucesso(null);
+    setErr(null);
+    setPending([]);
+    setCategoria("");
+    setDescricao("");
+    setImovelId("");
+  }
+
+  function voltarListagem() {
+    setSucesso(null);
+    listaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function abrir(row: DocRow) {
@@ -205,6 +234,7 @@ function DocumentosPage() {
       .createSignedUrl(row.caminho_arquivo, 60);
     if (error) {
       setErr(error.message);
+      toast.error(`Falha ao abrir documento: ${error.message}`);
       return;
     }
     window.open(data.signedUrl, "_blank", "noopener");
@@ -215,10 +245,12 @@ function DocumentosPage() {
     const { error: delErr } = await supabase.from("documentos").delete().eq("id", row.id);
     if (delErr) {
       setErr(delErr.message);
+      toast.error(`Falha ao remover documento: ${delErr.message}`);
       return;
     }
     await supabase.storage.from(DOCS_BUCKET).remove([row.caminho_arquivo]);
     await load();
+    toast.success("Documento removido.");
   }
 
   const filteredDocs = useMemo(() => {
