@@ -244,7 +244,7 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
         </div>
       ) : fotos.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-xs text-slate-500">
-          Nenhuma foto enviada ainda.
+          Nenhuma foto cadastrada. Selecione arquivos acima para enviar.
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
