@@ -40,7 +40,17 @@ export const Route = createFileRoute("/_authenticated/documentos/")({
   component: DocumentosPage,
 });
 
-function sanitizeBase(name: string): { base: string; ext: string } {
+/** Decodifica percent-encoding (ex: "%20") ANTES de sanitizar, para não virar "_20". */
+function safeDecode(name: string): string {
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+}
+
+function sanitizeBase(rawName: string): { base: string; ext: string } {
+  const name = safeDecode(rawName);
   const dot = name.lastIndexOf(".");
   const rawExt = dot >= 0 ? name.slice(dot + 1) : "";
   const rawBase = dot >= 0 ? name.slice(0, dot) : name;
