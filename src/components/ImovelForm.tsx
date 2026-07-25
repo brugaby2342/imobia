@@ -17,11 +17,13 @@ export type ImovelForm = {
   descricao: string;
 };
 
+export const ESTADO_FIXO = "SC";
+
 export const emptyForm: ImovelForm = {
   tipo: "",
   bairro: "",
   cidade: "",
-  estado: "",
+  estado: ESTADO_FIXO,
   valor: "",
   area_m2: "",
   quartos: "",
