@@ -24,10 +24,6 @@
       },
       {
         "prioridade": "media",
-        "item": "Exibir documentos no detalhe do imóvel em modo somente leitura, sem formulário duplicado."
-      },
-      {
-        "prioridade": "media",
         "item": "Ajustar permissões e organização da interface (admin, agrupamento por tipo e vínculo)."
       },
       {
@@ -35,7 +31,7 @@
         "item": "Melhorar UX de upload (validações, preview, mensagens de status)."
       }
     ],
-    "execucao": "Via Lovable (prompt já formulado em conversa anterior), não via Copilot/VS Code, para evitar duas fontes de mudança no mesmo código."
+    "execucao": "Via Lovable (prompt já formulado em conversa anterior)."
   },
   "decisao_modelagem_2307_documentos": {
     "data": "23/07/2026",
@@ -45,5 +41,37 @@
       "Nova tela /documentos (admin-only) com formulário de cadastro incluindo campo opcional \"imóvel relacionado\" (select buscando em listImoveis).",
       "A tela /imoveis/$id passou a mostrar apenas uma listagem read-only dos documentos vinculados àquele imóvel específico, sem formulário de upload duplicado."
     ]
+  },
+  "pendencias_midia_2307_24": {
+    "data": "23-24/07/2026",
+    "status": "aguardando_creditos_lovable",
+    "descricao": "Ajustes de mídia pendentes do ImobIA, dependentes de créditos Lovable para implementação.",
+    "itens": [
+      {
+        "prioridade": 1,
+        "item": "Corrigir a condição de exibição do campo de upload de foto na edição do imóvel para que ele apareça sempre que estiver editando um imóvel existente, independentemente de já haver fotos cadastradas. O problema é uma condição invertida, não uma limitação de imovel_id."
+      },
+      {
+        "prioridade": 2,
+        "item": "Avaliar a viabilidade de permitir upload de foto já durante o cadastro do imóvel, antes de salvar, e não apenas na edição posterior."
+      },
+      {
+        "prioridade": 3,
+        "item": "Adicionar feedback visual de sucesso (toast/confirmação) em três fluxos: cadastro de imóvel, upload de foto e upload de documento."
+      },
+      {
+        "prioridade": 4,
+        "item": "Remover o bloco ou referência de documentos que ainda aparece na tela de cadastro do imóvel (/imoveis/novo), que deveria ter sido removido após a separação em tela própria."
+      },
+      {
+        "prioridade": 5,
+        "item": "Corrigir a sanitização do nome de arquivo de documento: decodificar o nome com decodeURIComponent, ou equivalente, antes de aplicar a regex de limpeza, porque nomes com espaço estão chegando como %20 e sendo convertidos incorretamente."
+      },
+      {
+        "prioridade": 6,
+        "item": "Após salvar imóvel ou enviar documento, oferecer a opção de continuar cadastrando, por exemplo com um botão \"Cadastrar novo\", em vez de redirecionar automaticamente para a tela de chat."
+      }
+    ],
+    "observacao": "Fotos já funcionam corretamente no fluxo de sanitização; o problema descrito acima é específico de documentos. Todos os itens dependem de créditos Lovable."
   }
 }
