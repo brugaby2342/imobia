@@ -37,9 +37,10 @@ function EditarImovel() {
     setSubmitting(true);
     try {
       await update({ data: { id: numericId, ...parsed.payload } });
+      toast.success(`Imóvel #${numericId} atualizado com sucesso.`);
       navigate({ to: "/imoveis" });
     } catch (e) {
-      alert(`Falha ao salvar: ${(e as Error).message}`);
+      toast.error(`Falha ao salvar: ${(e as Error).message}`);
     } finally {
       setSubmitting(false);
     }
