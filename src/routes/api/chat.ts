@@ -7,19 +7,33 @@ import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
-const SYSTEM_PROMPT = `Você é o ImobIA, copiloto de consulta do portfólio da imobiliária Litoral Prime (litoral de Santa Catarina).
+const SYSTEM_PROMPT = `Você é o ImobIA, copiloto corporativo da imobiliária Litoral Prime (litoral de Santa Catarina). Você atende corretores em duas especialidades: PORTFÓLIO DE IMÓVEIS e BASE DOCUMENTAL.
 
-REGRAS ESTRITAS:
-- Responda SOMENTE com base nos dados retornados pela ferramenta buscar_imoveis.
-- Nunca invente imóveis, características, endereços, valores ou fotos.
-- Se a busca não retornar resultados, diga isso claramente e sugira ajustar os filtros. Não sugira imóveis fora da base.
-- Não exponha dados de proprietários; apenas características comerciais.
-- Sempre chame buscar_imoveis antes de listar imóveis. Se o usuário só cumprimentar ou fizer pergunta genérica, explique brevemente o que você faz.
+## Roteamento de ferramentas
+- Perguntas sobre características, valores, área, quartos, localização ou disponibilidade de imóveis → use SEMPRE buscar_imoveis.
+- Perguntas sobre normas, procedimentos, contratos, cláusulas, políticas internas, documentação exigida ou conteúdo de arquivos → use SEMPRE buscar_documentos.
+- Se a pergunta envolver os dois domínios, use as duas ferramentas.
+- Nunca responda sobre imóveis ou documentos sem antes chamar a ferramenta correspondente.
+
+## Regras — Imóveis
+- Responda SOMENTE com base no que buscar_imoveis retornar. Nunca invente imóveis, endereços, valores ou fotos.
 - Formate valores em BRL (R$ 850.000). Use "Área (m²)" e "Situação documental" como rótulos.
-- Seja conciso, corporativo e útil. Responda em português do Brasil. Use markdown (listas, negrito) quando ajudar.
-- Ao listar imóveis, NÃO repita os detalhes em texto: os imóveis serão renderizados como cards visuais pelo frontend a partir dos dados estruturados. Apenas escreva uma introdução curta (1-2 frases) resumindo o que foi encontrado (ex: "Encontrei 3 apartamentos em Balneário Camboriú dentro do seu orçamento:"). Não liste tipo, valor, área, etc. em texto.
-- Quando a tool buscar_imoveis retornar { cidade_fora_portfolio: true }: explique que a Litoral Prime não atua na cidade solicitada e liste as cidades disponíveis retornadas em cidades_disponiveis. Não sugira alternativas fora dessa lista.
-- Quando a tool retornar imóveis vazios mas a cidade EXISTE no portfólio (cidade_fora_portfolio ausente/false e total = 0): diga que não há imóveis com aquelas características naquela cidade e sugira ajustar os filtros (ex: ampliar faixa de valor, remover algum critério).`;
+- Ao listar imóveis, NÃO repita os detalhes em texto: os imóveis são renderizados como cards visuais pelo frontend. Escreva apenas uma introdução curta (1-2 frases) resumindo o que foi encontrado.
+- Quando a tool retornar { cidade_fora_portfolio: true }: explique que a Litoral Prime não atua na cidade solicitada e liste as cidades disponíveis em cidades_disponiveis. Não sugira alternativas fora dessa lista.
+- Quando a tool retornar imóveis vazios mas a cidade EXISTE no portfólio: diga que não há imóveis com aquelas características e sugira ajustar os filtros (ampliar faixa de valor, remover algum critério).
+
+## Regras — Documentos
+- Responda SOMENTE com base no conteúdo devolvido por buscar_documentos. Nunca invente cláusulas, prazos, regras ou trechos.
+- SEMPRE cite o nome/título do documento (e a categoria, quando útil) que embasa cada afirmação. Quando o documento estiver vinculado a um imóvel, mencione o vínculo.
+- Cite trechos curtos entre aspas quando forem decisivos; não copie o documento inteiro.
+- Quando a tool retornar { sem_correspondencia: true }, ela devolve documentos_disponiveis: informe ao corretor que não houve correspondência para o termo e liste os documentos existentes (título, categoria e vínculo) para que ele reformule a pergunta. Não diga apenas "não encontrei".
+- Se o conteúdo devolvido estiver truncado (truncado: true), diga que a resposta cobre apenas parte do documento.
+
+## Regras gerais
+- Não exponha dados de proprietários; apenas informações comerciais e normativas.
+- Seja conciso, corporativo e útil. Português do Brasil. Use markdown (listas, negrito) quando ajudar.
+- Se o usuário só cumprimentar, explique brevemente o que você faz (consulta ao portfólio e à base documental).`;
+
 
 function isNewSupabaseApiKey(v: string) {
   return v.startsWith("sb_publishable_") || v.startsWith("sb_secret_");
@@ -182,15 +196,127 @@ export const Route = createFileRoute("/api/chat")({
           },
         });
 
+        // ---- Base documental ----
+        const FULL_LIMIT = 8000; // documentos até este tamanho vão integrais
+        const MARGIN = 4000; // margem generosa em torno do termo em documentos grandes
+
+        /** Recorta um trecho amplo, alinhando às quebras de seção (linha em branco). */
+        function trechoAmplo(texto: string, termo: string) {
+          const idx = termo ? texto.toLowerCase().indexOf(termo.toLowerCase()) : -1;
+          const center = idx >= 0 ? idx : 0;
+          let start = Math.max(0, center - MARGIN);
+          let end = Math.min(texto.length, center + termo.length + MARGIN);
+          if (start > 0) {
+            const br = texto.lastIndexOf("\n\n", start);
+            start = br >= 0 ? br + 2 : texto.lastIndexOf("\n", start) + 1;
+            if (start < 0) start = 0;
+          }
+          if (end < texto.length) {
+            const br = texto.indexOf("\n\n", end);
+            end = br >= 0 ? br : texto.length;
+          }
+          return {
+            conteudo: texto.slice(start, end),
+            truncado: start > 0 || end < texto.length,
+          };
+        }
+
+        type DocRowLite = {
+          id: number;
+          titulo: string;
+          categoria: string;
+          descricao: string | null;
+          imovel_id: number | null;
+          conteudo_text: string | null;
+        };
+
+        const buscarDocumentos = tool({
+          description:
+            "Busca na base documental da imobiliária (normas, contratos, procedimentos, políticas internas). Use para perguntas sobre conteúdo normativo, contratual ou procedimental — NÃO para características ou preços de imóveis. O termo é procurado no título e no conteúdo do documento. Retorna o conteúdo integral de documentos pequenos.",
+          inputSchema: z.object({
+            termo: strish.describe(
+              "Palavra ou expressão-chave a procurar no título e no conteúdo. Deixe null para listar todos os documentos.",
+            ),
+            categoria: strish.describe("Filtrar por categoria, ex: Contrato, Manual, Matrícula"),
+            imovel_id: numish.describe("Filtrar documentos vinculados a um imóvel específico"),
+          }),
+          execute: async (args) => {
+            const termo = args.termo?.trim() || null;
+            const categoria = args.categoria?.trim() || null;
+            const imovelId = parseInt10(args.imovel_id);
+
+            const baseSelect = "id, titulo, categoria, descricao, imovel_id, conteudo_text";
+
+            const listarDisponiveis = async () => {
+              const { data } = await supabase
+                .from("documentos")
+                .select("id, titulo, categoria, descricao, imovel_id")
+                .limit(50);
+              return (data ?? []).map((d) => ({
+                id: d.id,
+                titulo: d.titulo,
+                categoria: d.categoria,
+                descricao: d.descricao,
+                imovel_id: d.imovel_id,
+                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
+              }));
+            };
+
+            let q = supabase.from("documentos").select(baseSelect).limit(10);
+            if (categoria) q = q.ilike("categoria", `%${categoria}%`);
+            if (imovelId !== null) q = q.eq("imovel_id", imovelId);
+            // Termo procurado no título E no conteúdo.
+            if (termo) q = q.or(`titulo.ilike.%${termo}%,conteudo_text.ilike.%${termo}%`);
+
+            const { data, error } = await q;
+            if (error) return { erro: error.message, documentos: [] };
+
+            const rows = (data ?? []) as DocRowLite[];
+
+            // FALLBACK: nada encontrado → devolve o catálogo disponível.
+            if (rows.length === 0) {
+              return {
+                total: 0,
+                documentos: [],
+                sem_correspondencia: true,
+                termo_buscado: termo,
+                documentos_disponiveis: await listarDisponiveis(),
+              };
+            }
+
+            const documentos = rows.map((d) => {
+              const texto = d.conteudo_text ?? "";
+              const integral = texto.length <= FULL_LIMIT;
+              const { conteudo, truncado } = integral
+                ? { conteudo: texto, truncado: false }
+                : trechoAmplo(texto, termo ?? "");
+              return {
+                id: d.id,
+                titulo: d.titulo,
+                categoria: d.categoria,
+                descricao: d.descricao,
+                imovel_id: d.imovel_id,
+                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
+                conteudo,
+                truncado,
+                tamanho_total: texto.length,
+              };
+            });
+
+            return { total: documentos.length, documentos };
+          },
+        });
+
         try {
           const gateway = createLovableAiGatewayProvider(apiKey);
           const result = await generateText({
             model: gateway("google/gemini-2.5-flash"),
             system: SYSTEM_PROMPT,
             messages: messages.map((m) => ({ role: m.role, content: m.content })),
-            tools: { buscar_imoveis: buscarImoveis },
+            tools: { buscar_imoveis: buscarImoveis, buscar_documentos: buscarDocumentos },
             stopWhen: stepCountIs(5),
           });
+
           type FotoLite = { caminho_arquivo: string | null; ordem: number | null; id?: number };
           type ImovelRow = {
             id: string | number;

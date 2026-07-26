@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Upload, Trash2, ImageIcon, FileText, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { removeFromStorage } from "@/lib/storage-remove";
+
 
 const FOTOS_BUCKET = "imovel_fotos";
 const DOCS_BUCKET = "documentos";
@@ -147,16 +149,40 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
   async function remove(row: FotoRow) {
     if (!confirm("Remover esta foto?")) return;
     setErr(null);
+
+    // 1) Storage primeiro (remove() não erra em caminho inexistente — comparamos o retorno).
+    let missing = false;
+    try {
+      const out = await removeFromStorage(FOTOS_BUCKET, [row.caminho_arquivo]);
+      missing = out.missing.length > 0;
+      if (missing) {
+        toast.warning(
+          `Arquivo "${row.caminho_arquivo}" não foi encontrado no bucket "${FOTOS_BUCKET}". O registro será removido; verifique arquivos órfãos no Storage.`,
+        );
+      }
+    } catch (e) {
+      const msg = (e as Error).message;
+      setErr(msg);
+      toast.error(`Falha ao remover o arquivo do Storage: ${msg}. O registro foi mantido.`);
+      return;
+    }
+
+    // 2) Banco.
     const { error: delDbErr } = await supabase.from("imovel_fotos").delete().eq("id", row.id);
     if (delDbErr) {
       setErr(delDbErr.message);
-      toast.error(`Falha ao remover foto: ${delDbErr.message}`);
+      toast.error(
+        missing
+          ? `O registro da foto #${row.id} não pôde ser excluído: ${delDbErr.message}.`
+          : `Arquivo já removido do Storage, mas o registro da foto #${row.id} NÃO foi excluído: ${delDbErr.message}. A galeria vai exibir imagem quebrada — tente remover novamente.`,
+      );
+      await load();
       return;
     }
-    await supabase.storage.from(FOTOS_BUCKET).remove([row.caminho_arquivo]);
     await load();
-    toast.success("Foto removida.");
+    toast.success(missing ? "Registro removido (arquivo não existia no Storage)." : "Foto removida.");
   }
+
 
   return (
     <section className="mt-8 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
