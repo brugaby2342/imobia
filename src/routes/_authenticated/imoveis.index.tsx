@@ -29,18 +29,56 @@ function ListaImoveis() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   async function onDelete(id: number, label: string) {
-    if (!confirm(`Excluir "${label}"? Esta ação não pode ser desfeita.`)) return;
+    if (
+      !confirm(
+        `Excluir "${label}"? As fotos do imóvel também serão excluídas. Documentos vinculados são mantidos, apenas sem vínculo. Esta ação não pode ser desfeita.`,
+      )
+    )
+      return;
     setDeletingId(id);
     try {
-      await del({ data: { id } });
+      // 1) Apaga os arquivos de foto no Storage antes do cascade do banco.
+      const { data: fotos, error: fotosErr } = await supabase
+        .from("imovel_fotos")
+        .select("caminho_arquivo")
+        .eq("imovel_id", id);
+      if (fotosErr) throw new Error(fotosErr.message);
+
+      const paths = (fotos ?? []).map((f) => f.caminho_arquivo).filter(Boolean);
+      let missing: string[] = [];
+      if (paths.length) {
+        const out = await removeFromStorage("imovel_fotos", paths);
+        missing = out.missing;
+        if (missing.length) {
+          toast.warning(
+            `${missing.length} arquivo(s) de foto não foram encontrados no bucket (ex: ${missing[0]}). Verifique arquivos órfãos no Storage.`,
+          );
+        }
+      }
+
+      // 2) Exclui o imóvel (fotos em cascata; documentos ficam sem vínculo).
+      try {
+        await del({ data: { id } });
+      } catch (e) {
+        toast.error(
+          paths.length
+            ? `Arquivos de foto já removidos do Storage, mas o imóvel #${id} NÃO foi excluído: ${(e as Error).message}. As fotos restantes apontam para arquivos inexistentes — tente excluir novamente.`
+            : `Falha ao excluir imóvel #${id}: ${(e as Error).message}`,
+        );
+        await refetch();
+        return;
+      }
+
       await refetch();
       router.invalidate();
+      toast.success(`Imóvel #${id} excluído.`);
     } catch (e) {
-      alert(`Falha ao excluir: ${(e as Error).message}`);
+      toast.error(`Falha ao excluir: ${(e as Error).message}`);
     } finally {
       setDeletingId(null);
     }
   }
+
 
   return (
     <div>
