@@ -1,77 +1,103 @@
 {
   "projeto": "ImobIA",
-  "pendencias": [
-    "Corrigir a exibição de \"1 quartos\" para o singular em telas de listagem e detalhes.",
-    "Fixar o estado SC no formulário, garantindo que o valor seja preservado e exibido corretamente.",
-    "Aplicar migration para corrigir os ids auto-gerados nas tabelas imovel_fotos e documentos, que estavam sem default/sequence e causam erro de duplicate key value violates unique constraint.",
-    "Implementar a exibição da foto do imóvel nos cards de listagem."
+  "ultima_atualizacao": "26/07/2026",
+  "confirmado_funcionando": [
+    "Auth + RBAC (admin/corretor) com gate nas rotas _authenticated.",
+    "CRUD de imóveis.",
+    "Busca em linguagem natural via Gemini 2.5 Flash em /api/chat, com cards.",
+    "Upload de fotos no bucket imovel_fotos, público, com nomenclatura imovel_{id 3 dígitos}_{sequencial}.{extensao} na raiz do bucket.",
+    "Campo de upload de fotos sempre visível na edição, com estado vazio.",
+    "Estado de sucesso após cadastro, sem redirecionar para o chat.",
+    "Toasts de sucesso e erro.",
+    "Sanitização de nome de arquivo com decodeURIComponent -> normalize('NFD') removendo diacríticos -> regex [\\w.-].",
+    "Foto de capa exibida no card do resultado da pesquisa, trazida na mesma consulta da tool buscar_imoveis.",
+    "Módulo independente de documentos, com vínculo opcional a imóvel.",
+    "RLS nas tabelas imoveis, imovel_fotos, documentos, profiles e nos buckets."
+  ],
+  "pendencias_via_lovable": [
+    {
+      "prioridade": "alta",
+      "item": "Corrigir a exclusão de imóvel que hoje falha por FK em imovel_fotos sem ON DELETE CASCADE.",
+      "detalhe": "Resolver via migration com cascade em imovel_fotos e documentos, ou excluir os filhos antes do pai."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Eliminar arquivos órfãos no Storage ao excluir foto e ao excluir imóvel.",
+      "detalhe": "A exclusão precisa chamar storage.remove() além de apagar as linhas no banco."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Corrigir fotos do seed inicial que não aparecem.",
+      "detalhe": "Suspeita de divergência entre caminho_arquivo e o nome real do arquivo no bucket; provável correção via UPDATE no banco."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Remover o bloco de upload de documentos do formulário de cadastro de imóvel.",
+      "detalhe": "Documentos vinculados a imóvel devem aparecer só na listagem de imóveis e nos cards do resultado da pesquisa, apenas com download."
+    },
+    {
+      "prioridade": "alta",
+      "item": "Implementar consulta da IA ao conteúdo de documentos via coluna conteudo text.",
+      "detalhe": "Criar ou ajustar tool que filtre por palavra-chave e/ou imovel_id e devolva o texto ao modelo; o prompt deve exigir citação da origem do documento."
+    },
+    {
+      "prioridade": "media",
+      "item": "Abrir modal de detalhe do imóvel com galeria das demais fotos e descrição integral."
+    },
+    {
+      "prioridade": "media",
+      "item": "Após cadastrar foto na edição, oferecer também Cadastrar outro imóvel e Voltar à listagem."
+    },
+    {
+      "prioridade": "media",
+      "item": "Omitir itens com valor 0, sem mostrar 0 quartos ou 0 suítes."
+    },
+    {
+      "prioridade": "baixa",
+      "item": "No cadastro de documento, manter só a ação de cadastrar novo e remover o botão Voltar à listagem."
+    },
+    {
+      "prioridade": "baixa",
+      "item": "Substituir as perguntas de exemplo do chat por três novas que demonstrem melhor as capacidades da aplicação."
+    }
+  ],
+  "itens_condicionais": [
+    {
+      "titulo": "AGENTES ESPECIALIZADOS - DECISÃO POSTERGADA COM PORTÃO DE DECISÃO",
+      "status": "condicional",
+      "nao_entra_na_fila": true,
+      "situacao_atual": "A especialização existe em nível de tools, não de agentes. Há uma única chamada ao Gemini 2.5 Flash em /api/chat, com duas tools de domínio distinto (buscar_imoveis e busca em documentos) e o modelo decidindo qual chamar. Não há orquestrador nem prompts de sistema separados por agente.",
+      "escopo_minimo_previsto": "Descritivos de tool delimitando explicitamente o domínio de cada uma e prompt de sistema com seções separadas por especialidade, incluindo regras de resposta para imóveis e para documentos, com citação do documento de origem. Esse escopo entrega comportamento especializado sem alterar a arquitetura.",
+      "escopo_arquitetura_multiagente_nao_aprovado": "Orquestrador roteando para dois agentes com chamadas separadas ao modelo, cada um com prompt de sistema próprio.",
+      "custos_identificados": [
+        "Maior latência, perceptível na gravação do vídeo.",
+        "Mais pontos de falha.",
+        "Mais crédito por iteração.",
+        "Refatoração do /api/chat, que é a peça central da demonstração e não pode quebrar."
+      ],
+      "porta_de_decisao": {
+        "avaliar_em": "28/07/2026",
+        "condicoes": [
+          "Itens de prioridade alta 1 a 5 fechados e testados.",
+          "README e parte teórica já com rascunho."
+        ],
+        "regra": "Se qualquer uma das condições falhar, congelar o escopo e mover para trabalhos futuros. Se aprovado, implementar preservando o comportamento atual como fallback, sem substituir o fluxo que já funciona."
+      },
+      "nomenclatura_considerada": [
+        "pesquisador_imovel",
+        "pesquisador_documento"
+      ],
+      "registro_para_parte_teorica": "A escolha por especialização via tools em vez de orquestração multiagente é uma decisão fundamentada em volume de dados e prazo, o mesmo raciocínio aplicado à escolha de conteudo text em vez de pgvector. Ambas devem ser apresentadas como decisões de engenharia justificadas, não como escopo não realizado."
+    }
   ],
   "correcoes_de_rumo": [
-    "O upload de documentos não deve seguir o fluxo de um imóvel específico; os documentos são independentes e devem ser cadastrados separadamente.",
-    "É necessário distinguir claramente entre documentos institucionais e documentos de imóvel no processo de cadastro e organização."
+    "Upload de fotos só é liberado depois que o imóvel existe, porque o id é necessário para a nomenclatura e para o vínculo em imovel_fotos.",
+    "Não implementar retenção de arquivos em memória antes do save; essa abordagem foi descartada por decisão deliberada.",
+    "Documentos seguem independentes, com vínculo opcional a imóvel.",
+    "Respostas da IA sobre documentos devem citar explicitamente o documento de origem."
   ],
-  "pendencias_documentos_2307": {
-    "data": "23/07/2026",
-    "plano_execucao_priorizado": [
-      {
-        "prioridade": "alta",
-        "item": "Corrigir IDs auto-gerados em imovel_fotos e documentos (bug ativo, causa erro duplicate key).",
-        "observacao": "Migration pendente por falta de créditos Lovable."
-      },
-      {
-        "prioridade": "alta",
-        "item": "Criar módulo independente de documentos (rota própria, formulário com vínculo opcional a imóvel), distinguindo documentos institucionais de documentos de imóvel."
-      },
-      {
-        "prioridade": "media",
-        "item": "Ajustar permissões e organização da interface (admin, agrupamento por tipo e vínculo)."
-      },
-      {
-        "prioridade": "baixa",
-        "item": "Melhorar UX de upload (validações, preview, mensagens de status)."
-      }
-    ],
-    "execucao": "Via Lovable (prompt já formulado em conversa anterior)."
-  },
-  "decisao_modelagem_2307_documentos": {
-    "data": "23/07/2026",
-    "descricao": "Os documentos da tabela documentos foram redesenhados para serem independentes de imóveis e não mais vinculados obrigatoriamente a um imóvel específico.",
-    "motivo": "Documentos institucionais (manual do corretor, guia de regulamentação, regulamento de condomínio genérico) não pertencem a nenhum imóvel específico, então amarrar todo documento a um imóvel não refletia o modelo real de negócio da imobiliária.",
-    "implementacao": [
-      "Nova tela /documentos (admin-only) com formulário de cadastro incluindo campo opcional \"imóvel relacionado\" (select buscando em listImoveis).",
-      "A tela /imoveis/$id passou a mostrar apenas uma listagem read-only dos documentos vinculados àquele imóvel específico, sem formulário de upload duplicado."
-    ]
-  },
-  "pendencias_midia_2307_24": {
-    "data": "23-24/07/2026",
-    "status": "aguardando_creditos_lovable",
-    "descricao": "Ajustes de mídia pendentes do ImobIA, dependentes de créditos Lovable para implementação.",
-    "itens": [
-      {
-        "prioridade": 1,
-        "item": "Corrigir a condição de exibição do campo de upload de foto na edição do imóvel para que ele apareça sempre que estiver editando um imóvel existente, independentemente de já haver fotos cadastradas. O problema é uma condição invertida, não uma limitação de imovel_id."
-      },
-      {
-        "prioridade": 2,
-        "item": "Avaliar a viabilidade de permitir upload de foto já durante o cadastro do imóvel, antes de salvar, e não apenas na edição posterior."
-      },
-      {
-        "prioridade": 3,
-        "item": "Adicionar feedback visual de sucesso (toast/confirmação) em três fluxos: cadastro de imóvel, upload de foto e upload de documento."
-      },
-      {
-        "prioridade": 4,
-        "item": "Remover o bloco ou referência de documentos que ainda aparece na tela de cadastro do imóvel (/imoveis/novo), que deveria ter sido removido após a separação em tela própria."
-      },
-      {
-        "prioridade": 5,
-        "item": "Corrigir a sanitização do nome de arquivo de documento: decodificar o nome com decodeURIComponent, ou equivalente, antes de aplicar a regex de limpeza, porque nomes com espaço estão chegando como %20 e sendo convertidos incorretamente."
-      },
-      {
-        "prioridade": 6,
-        "item": "Após salvar imóvel ou enviar documento, oferecer a opção de continuar cadastrando, por exemplo com um botão \"Cadastrar novo\", em vez de redirecionar automaticamente para a tela de chat."
-      }
-    ],
-    "observacao": "Fotos já funcionam corretamente no fluxo de sanitização; o problema descrito acima é específico de documentos. Todos os itens dependem de créditos Lovable."
-  }
+  "observacoes": [
+    "Executar as pendências apenas via Lovable, não via Copilot/VS Code, para manter uma única fonte de mudança no código publicado.",
+    "Manter esta memória consistente com docs/notas-desenvolvimento.md para evitar divergência de estado."
+  ]
 }

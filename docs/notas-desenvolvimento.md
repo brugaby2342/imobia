@@ -1,45 +1,57 @@
 # Notas de Desenvolvimento - ImobIA
 
+## Estado Confirmado em 26/07/2026
+
+- Auth + RBAC (admin/corretor) com gate nas rotas `_authenticated`.
+- CRUD de imóveis.
+- Busca em linguagem natural via Gemini 2.5 Flash em `/api/chat`, com cards.
+- Upload de fotos no bucket `imovel_fotos`, público, com nomenclatura `imovel_{id 3 dígitos}_{sequencial}.{extensao}` na raiz do bucket.
+- Campo de upload de fotos sempre visível na edição, com estado vazio.
+- Estado de sucesso após cadastro, sem redirecionar para o chat.
+- Toasts de sucesso e erro.
+- Sanitização de nome de arquivo com `decodeURIComponent` -> `normalize('NFD')` removendo diacríticos -> regex `[\w.-]`.
+- Foto de capa exibida no card do resultado da pesquisa, trazida na mesma consulta da tool `buscar_imoveis`.
+- Módulo independente de documentos, com vínculo opcional a imóvel.
+- RLS nas tabelas `imoveis`, `imovel_fotos`, `documentos`, `profiles` e nos buckets.
+
 ## Pendências Ativas
 
-### Prioridade alta
+### Alta prioridade
 
-- Corrigir os IDs auto-gerados em `imovel_fotos` e `documentos`, que hoje podem gerar erro de duplicate key por falta de default/sequence.
-- Corrigir a exibição do campo de upload de foto na edição do imóvel, que deve aparecer sempre que um imóvel existente estiver sendo editado.
-- Garantir que o estado `SC` seja preservado e exibido corretamente no formulário.
+1. Corrigir a exclusão de imóvel que hoje falha por FK em `imovel_fotos` sem `ON DELETE CASCADE`.
+2. Eliminar arquivos órfãos no Storage ao excluir foto e ao excluir imóvel, chamando `storage.remove()`.
+3. Corrigir fotos do seed inicial que não aparecem, provavelmente por divergência entre `caminho_arquivo` e o nome real no bucket.
+4. Remover o bloco de upload de documentos do formulário de cadastro de imóvel.
+5. Implementar consulta da IA ao conteúdo de documentos via coluna `conteudo text`, com tool que filtre por palavra-chave e/ou `imovel_id` e devolva o texto ao modelo.
 
 ### Prioridade média
 
-- Exibir a foto do imóvel nos cards de listagem.
-- Ajustar a exibição de "1 quartos" para o singular em telas de listagem e detalhes.
-- Revisar permissões e organização da interface para documentos, incluindo separação por tipo e vínculo.
+6. Abrir modal de detalhe do imóvel com galeria das demais fotos e descrição integral.
+7. Após cadastrar foto na edição, oferecer também `Cadastrar outro imóvel` e `Voltar à listagem`.
+8. Omitir itens com valor 0, sem mostrar `0 quartos` ou `0 suítes`.
 
 ### Prioridade baixa
 
-- Melhorar a UX de upload com validações, preview e mensagens de status.
-- Avaliar se faz sentido permitir upload de foto e documento já durante o cadastro do imóvel, antes do salvamento inicial.
-- Adicionar feedback visual de sucesso em cadastro de imóvel, upload de foto e upload de documento.
-- Remover qualquer referência residual a documentos na tela `/imoveis/novo`.
-- Corrigir a sanitização do nome de arquivo de documento, decodificando o nome antes de aplicar a regex de limpeza.
-- Oferecer opção de continuar cadastrando após salvar imóvel ou enviar documento, em vez de redirecionar automaticamente para o chat.
+9. No cadastro de documento, manter só a ação de cadastrar novo e remover o botão `Voltar à listagem`.
+10. Substituir as perguntas de exemplo do chat por três novas que demonstrem melhor as capacidades da aplicação.
 
-## Decisões de Arquitetura Tomadas
+## Item Condicional
 
-- O upload de documentos não deve seguir o fluxo de um imóvel específico; os documentos são independentes e precisam de cadastro separado.
-- É necessário distinguir claramente entre documentos institucionais e documentos vinculados a um imóvel.
-- A tela `/documentos` deve ser admin-only e aceitar um vínculo opcional com imóvel.
-- A tela `/imoveis/$id` deve exibir apenas a listagem somente leitura dos documentos relacionados ao imóvel, sem formulário duplicado.
+- Agentes especializados: decisão postergada com portão de decisão. Hoje a especialização existe em nível de tools, não de agentes. A arquitetura atual segue com uma única chamada ao Gemini 2.5 Flash em `/api/chat`, com as tools `buscar_imoveis` e busca em documentos, e o modelo decide qual chamar.
+- Escopo mínimo previsto, mas não tratado como nova arquitetura: descritivos de tool delimitando explicitamente o domínio de cada uma e prompt de sistema com seções separadas por especialidade, incluindo regras de resposta para imóveis e para documentos, com citação do documento de origem.
+- Escopo multiagente não aprovado: orquestrador com dois agentes, prompts separados e chamadas separadas ao modelo.
+- Portão de decisão em 28/07/2026: só considerar orquestração real se as prioridades altas 1 a 5 estiverem fechadas e testadas e se README mais parte teórica já tiverem rascunho. Se qualquer uma falhar, congelar o escopo e mover para trabalhos futuros.
+- Nomenclatura considerada, caso venha a existir a implementação: `pesquisador_imovel` e `pesquisador_documento`.
+- Registro para a parte teórica: a opção por tools em vez de multiagente é decisão de engenharia baseada em volume de dados e prazo, no mesmo raciocínio de `conteudo text` em vez de `pgvector`.
 
-## Erros Resolvidos e Aprendizados
+## Decisões de Arquitetura Registradas
 
-- A duplicidade do formulário de documentos na tela do imóvel foi eliminada ao mover o cadastro para uma rota própria.
-- Foi reforçado o aprendizado de que nem todo documento pertence a um imóvel; parte da documentação é institucional e precisa existir de forma independente.
-- A sanitização de nomes de arquivo já funciona corretamente para fotos; o desvio atual está restrito ao fluxo de documentos.
-- Até o momento, não há um erro técnico adicional registrado como concluído nesta memória além da reorganização do fluxo de documentos.
+- Upload de fotos só é liberado depois que o imóvel existe, porque o `id` é necessário para a nomenclatura e para o vínculo em `imovel_fotos`.
+- Não há retenção de arquivos em memória antes do save; essa abordagem foi descartada por decisão deliberada.
+- Documentos continuam sendo independentes, com vínculo opcional a imóvel.
+- Respostas da IA sobre documentos devem citar explicitamente o documento de origem.
 
-## Observações de Segurança
+## Observações
 
-- O módulo de documentos deve respeitar controle de acesso administrativo na rota de cadastro.
-- A listagem em `/imoveis/$id` deve permanecer somente leitura para evitar edição indevida de documentos relacionados.
-- A separação entre documentos institucionais e documentos de imóvel reduz risco de associação incorreta de dados sensíveis ou operacionais.
-- Não há, na memória atual, um incidente de segurança confirmado; o ponto registrado é de organização de acesso e escopo.
+- Executar as pendências apenas via Lovable, não via Copilot/VS Code, para manter uma única fonte de mudança no código publicado.
+- Este arquivo deve permanecer consistente com [docs/memoria-projeto.json](/Users/brunagabrielaribeirosartor/imobia/docs/memoria-projeto.json) para evitar divergência de estado.
