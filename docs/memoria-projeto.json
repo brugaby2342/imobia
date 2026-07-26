@@ -22,16 +22,6 @@
     },
     {
       "prioridade": "alta",
-      "item": "Eliminar arquivos órfãos no Storage ao excluir foto e ao excluir imóvel.",
-      "detalhe": "A exclusão precisa chamar storage.remove() além de apagar as linhas no banco."
-    },
-    {
-      "prioridade": "alta",
-      "item": "Corrigir fotos do seed inicial que não aparecem.",
-      "detalhe": "Suspeita de divergência entre caminho_arquivo e o nome real do arquivo no bucket; provável correção via UPDATE no banco."
-    },
-    {
-      "prioridade": "alta",
       "item": "Remover o bloco de upload de documentos do formulário de cadastro de imóvel.",
       "detalhe": "Documentos vinculados a imóvel devem aparecer só na listagem de imóveis e nos cards do resultado da pesquisa, apenas com download."
     },
@@ -95,6 +85,22 @@
     "Não implementar retenção de arquivos em memória antes do save; essa abordagem foi descartada por decisão deliberada.",
     "Documentos seguem independentes, com vínculo opcional a imóvel.",
     "Respostas da IA sobre documentos devem citar explicitamente o documento de origem."
+  ],
+  "incidentes_encerrados": [
+    {
+      "item": "Exclusão de foto no Storage falhando por 'arquivo não encontrado'.",
+      "causa_raiz": "Faltava política de SELECT em storage.objects para o bucket imovel_fotos, então a API de Storage não localizava o objeto para remove() e list().",
+      "resolucao": "CREATE POLICY aplicado manualmente, restrito a authenticated, mantendo a necessidade operacional apesar do aviso do Supabase."
+    },
+    {
+      "item": "Colisão de nome no upload de fotos.",
+      "causa_raiz": "Sem SELECT em storage.objects, o list() retornava zero arquivos e o sequencial era calculado errado.",
+      "resolucao": "Problema de raiz encerrado junto com a política de SELECT; o ponto restante é ajustar o cliente para tratar retornos vazios e adotar maior+1 no cálculo do sequencial."
+    }
+  ],
+  "pendencias_residuais_lovable": [
+    "Tratar no cliente o retorno vazio de remove() para evitar falso negativo de 'arquivo não encontrado'.",
+    "Calcular o sequencial do nome por maior+1 em vez de contagem, para evitar colisões após exclusões intermediárias."
   ],
   "observacoes": [
     "Executar as pendências apenas via Lovable, não via Copilot/VS Code, para manter uma única fonte de mudança no código publicado.",

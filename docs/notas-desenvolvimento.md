@@ -19,10 +19,8 @@
 ### Alta prioridade
 
 1. Corrigir a exclusão de imóvel que hoje falha por FK em `imovel_fotos` sem `ON DELETE CASCADE`.
-2. Eliminar arquivos órfãos no Storage ao excluir foto e ao excluir imóvel, chamando `storage.remove()`.
-3. Corrigir fotos do seed inicial que não aparecem, provavelmente por divergência entre `caminho_arquivo` e o nome real no bucket.
-4. Remover o bloco de upload de documentos do formulário de cadastro de imóvel.
-5. Implementar consulta da IA ao conteúdo de documentos via coluna `conteudo text`, com tool que filtre por palavra-chave e/ou `imovel_id` e devolva o texto ao modelo.
+2. Remover o bloco de upload de documentos do formulário de cadastro de imóvel.
+3. Implementar consulta da IA ao conteúdo de documentos via coluna `conteudo text`, com tool que filtre por palavra-chave e/ou `imovel_id` e devolva o texto ao modelo.
 
 ### Prioridade média
 
@@ -43,6 +41,16 @@
 - Portão de decisão em 28/07/2026: só considerar orquestração real se as prioridades altas 1 a 5 estiverem fechadas e testadas e se README mais parte teórica já tiverem rascunho. Se qualquer uma falhar, congelar o escopo e mover para trabalhos futuros.
 - Nomenclatura considerada, caso venha a existir a implementação: `pesquisador_imovel` e `pesquisador_documento`.
 - Registro para a parte teórica: a opção por tools em vez de multiagente é decisão de engenharia baseada em volume de dados e prazo, no mesmo raciocínio de `conteudo text` em vez de `pgvector`.
+
+## Incidentes Encerrados
+
+- Exclusão de foto no Storage: a causa raiz era a ausência de política de `SELECT` em `storage.objects` para o bucket `imovel_fotos`, o que fazia `remove()` e `list()` não localizarem o objeto. O `CREATE POLICY` foi aplicado manualmente, restrito a `authenticated`, e o aviso do Supabase foi aceito por necessidade operacional.
+- Colisão de nome no upload: o problema de raiz foi encerrado junto com a política de `SELECT`, porque `list()` deixava de retornar arquivos e o sequencial era calculado errado.
+
+## Pendências Residuais Lovable
+
+- Tratar no cliente o retorno vazio de `remove()` para evitar falso negativo de `arquivo não encontrado`.
+- Calcular o sequencial do nome por `maior+1` em vez de contagem, para evitar colisões após exclusões intermediárias.
 
 ## Decisões de Arquitetura Registradas
 
