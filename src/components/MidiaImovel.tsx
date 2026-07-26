@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Upload, Trash2, ImageIcon, FileText, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { removeFromStorage } from "@/lib/storage-remove";
+
 
 const FOTOS_BUCKET = "imovel_fotos";
 const DOCS_BUCKET = "documentos";
