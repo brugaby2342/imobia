@@ -196,15 +196,127 @@ export const Route = createFileRoute("/api/chat")({
           },
         });
 
+        // ---- Base documental ----
+        const FULL_LIMIT = 8000; // documentos até este tamanho vão integrais
+        const MARGIN = 4000; // margem generosa em torno do termo em documentos grandes
+
+        /** Recorta um trecho amplo, alinhando às quebras de seção (linha em branco). */
+        function trechoAmplo(texto: string, termo: string) {
+          const idx = termo ? texto.toLowerCase().indexOf(termo.toLowerCase()) : -1;
+          const center = idx >= 0 ? idx : 0;
+          let start = Math.max(0, center - MARGIN);
+          let end = Math.min(texto.length, center + termo.length + MARGIN);
+          if (start > 0) {
+            const br = texto.lastIndexOf("\n\n", start);
+            start = br >= 0 ? br + 2 : texto.lastIndexOf("\n", start) + 1;
+            if (start < 0) start = 0;
+          }
+          if (end < texto.length) {
+            const br = texto.indexOf("\n\n", end);
+            end = br >= 0 ? br : texto.length;
+          }
+          return {
+            conteudo: texto.slice(start, end),
+            truncado: start > 0 || end < texto.length,
+          };
+        }
+
+        type DocRowLite = {
+          id: number;
+          titulo: string;
+          categoria: string;
+          descricao: string | null;
+          imovel_id: number | null;
+          conteudo_text: string | null;
+        };
+
+        const buscarDocumentos = tool({
+          description:
+            "Busca na base documental da imobiliária (normas, contratos, procedimentos, políticas internas). Use para perguntas sobre conteúdo normativo, contratual ou procedimental — NÃO para características ou preços de imóveis. O termo é procurado no título e no conteúdo do documento. Retorna o conteúdo integral de documentos pequenos.",
+          inputSchema: z.object({
+            termo: strish.describe(
+              "Palavra ou expressão-chave a procurar no título e no conteúdo. Deixe null para listar todos os documentos.",
+            ),
+            categoria: strish.describe("Filtrar por categoria, ex: Contrato, Manual, Matrícula"),
+            imovel_id: numish.describe("Filtrar documentos vinculados a um imóvel específico"),
+          }),
+          execute: async (args) => {
+            const termo = args.termo?.trim() || null;
+            const categoria = args.categoria?.trim() || null;
+            const imovelId = parseInt10(args.imovel_id);
+
+            const baseSelect = "id, titulo, categoria, descricao, imovel_id, conteudo_text";
+
+            const listarDisponiveis = async () => {
+              const { data } = await supabase
+                .from("documentos")
+                .select("id, titulo, categoria, descricao, imovel_id")
+                .limit(50);
+              return (data ?? []).map((d) => ({
+                id: d.id,
+                titulo: d.titulo,
+                categoria: d.categoria,
+                descricao: d.descricao,
+                imovel_id: d.imovel_id,
+                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
+              }));
+            };
+
+            let q = supabase.from("documentos").select(baseSelect).limit(10);
+            if (categoria) q = q.ilike("categoria", `%${categoria}%`);
+            if (imovelId !== null) q = q.eq("imovel_id", imovelId);
+            // Termo procurado no título E no conteúdo.
+            if (termo) q = q.or(`titulo.ilike.%${termo}%,conteudo_text.ilike.%${termo}%`);
+
+            const { data, error } = await q;
+            if (error) return { erro: error.message, documentos: [] };
+
+            const rows = (data ?? []) as DocRowLite[];
+
+            // FALLBACK: nada encontrado → devolve o catálogo disponível.
+            if (rows.length === 0) {
+              return {
+                total: 0,
+                documentos: [],
+                sem_correspondencia: true,
+                termo_buscado: termo,
+                documentos_disponiveis: await listarDisponiveis(),
+              };
+            }
+
+            const documentos = rows.map((d) => {
+              const texto = d.conteudo_text ?? "";
+              const integral = texto.length <= FULL_LIMIT;
+              const { conteudo, truncado } = integral
+                ? { conteudo: texto, truncado: false }
+                : trechoAmplo(texto, termo ?? "");
+              return {
+                id: d.id,
+                titulo: d.titulo,
+                categoria: d.categoria,
+                descricao: d.descricao,
+                imovel_id: d.imovel_id,
+                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
+                conteudo,
+                truncado,
+                tamanho_total: texto.length,
+              };
+            });
+
+            return { total: documentos.length, documentos };
+          },
+        });
+
         try {
           const gateway = createLovableAiGatewayProvider(apiKey);
           const result = await generateText({
             model: gateway("google/gemini-2.5-flash"),
             system: SYSTEM_PROMPT,
             messages: messages.map((m) => ({ role: m.role, content: m.content })),
-            tools: { buscar_imoveis: buscarImoveis },
+            tools: { buscar_imoveis: buscarImoveis, buscar_documentos: buscarDocumentos },
             stopWhen: stepCountIs(5),
           });
+
           type FotoLite = { caminho_arquivo: string | null; ordem: number | null; id?: number };
           type ImovelRow = {
             id: string | number;
