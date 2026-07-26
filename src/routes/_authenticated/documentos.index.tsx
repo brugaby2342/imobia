@@ -244,16 +244,43 @@ function DocumentosPage() {
 
   async function remove(row: DocRow) {
     if (!confirm(`Remover "${row.titulo}"?`)) return;
+    setErr(null);
+
+    // 1) Storage primeiro: só assim conseguimos distinguir "apagado" de "não existia".
+    let missing = false;
+    try {
+      const out = await removeFromStorage(DOCS_BUCKET, [row.caminho_arquivo]);
+      missing = out.missing.length > 0;
+      if (missing) {
+        toast.warning(
+          `Arquivo "${row.caminho_arquivo}" não foi encontrado no bucket "${DOCS_BUCKET}". O registro será removido, mas verifique se há arquivo órfão no Storage.`,
+        );
+      }
+    } catch (e) {
+      const msg = (e as Error).message;
+      setErr(msg);
+      toast.error(`Falha ao remover o arquivo do Storage: ${msg}. O registro foi mantido.`);
+      return;
+    }
+
+    // 2) Banco.
     const { error: delErr } = await supabase.from("documentos").delete().eq("id", row.id);
     if (delErr) {
       setErr(delErr.message);
-      toast.error(`Falha ao remover documento: ${delErr.message}`);
+      toast.error(
+        missing
+          ? `O registro #${row.id} não pôde ser excluído: ${delErr.message}. O arquivo já não existia no Storage — o documento aponta para um arquivo inexistente.`
+          : `Arquivo já removido do Storage, mas o registro #${row.id} NÃO foi excluído: ${delErr.message}. O documento agora aponta para um arquivo inexistente — tente excluir novamente.`,
+      );
+      await load();
       return;
     }
-    await supabase.storage.from(DOCS_BUCKET).remove([row.caminho_arquivo]);
     await load();
-    toast.success("Documento removido.");
+    toast.success(
+      missing ? "Registro removido (arquivo não existia no Storage)." : "Documento removido.",
+    );
   }
+
 
   const filteredDocs = useMemo(() => {
     if (filtroImovel === "todos") return docs;
