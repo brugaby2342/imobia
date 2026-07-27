@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { removeFromStorage } from "@/lib/storage-remove";
+import { removeFromStorageStrict } from "@/lib/storage-remove";
 import { listImoveis, deleteImovel } from "@/lib/imoveis.functions";
 
 
