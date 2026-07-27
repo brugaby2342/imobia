@@ -71,13 +71,12 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     const { data, error } = await supabase
       .from("imovel_fotos")
       .select("id,caminho_arquivo,ordem")
-      .eq("imovel_id", imovelId)
-      .order("ordem", { ascending: true })
-      .order("id", { ascending: true });
+      .eq("imovel_id", imovelId);
     if (error) setErr(error.message);
-    else setFotos(data ?? []);
+    else setFotos(sortFotos(data ?? []) as FotoRow[]);
     setLoading(false);
   }
+
 
   useEffect(() => {
     load();
