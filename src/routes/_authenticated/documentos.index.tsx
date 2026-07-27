@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { removeFromStorage } from "@/lib/storage-remove";
+import { removeFromStorageStrict } from "@/lib/storage-remove";
 import { listImoveis } from "@/lib/imoveis.functions";
 
 
@@ -248,20 +248,14 @@ function DocumentosPage() {
     if (!confirm(`Remover "${row.titulo}"?`)) return;
     setErr(null);
 
-    // 1) Storage primeiro: só assim conseguimos distinguir "apagado" de "não existia".
-    let missing = false;
+    // 1) Storage primeiro. Resposta vazia não é prova de "arquivo inexistente":
+    //    mantemos o registro no banco para não deixar arquivo órfão.
     try {
-      const out = await removeFromStorage(DOCS_BUCKET, [row.caminho_arquivo]);
-      missing = out.missing.length > 0;
-      if (missing) {
-        toast.warning(
-          `Arquivo "${row.caminho_arquivo}" não foi encontrado no bucket "${DOCS_BUCKET}". O registro será removido, mas verifique se há arquivo órfão no Storage.`,
-        );
-      }
+      await removeFromStorageStrict(DOCS_BUCKET, [row.caminho_arquivo]);
     } catch (e) {
       const msg = (e as Error).message;
       setErr(msg);
-      toast.error(`Falha ao remover o arquivo do Storage: ${msg}. O registro foi mantido.`);
+      toast.error(`Falha ao remover o arquivo do Storage: ${msg}`);
       return;
     }
 
@@ -270,18 +264,15 @@ function DocumentosPage() {
     if (delErr) {
       setErr(delErr.message);
       toast.error(
-        missing
-          ? `O registro #${row.id} não pôde ser excluído: ${delErr.message}. O arquivo já não existia no Storage — o documento aponta para um arquivo inexistente.`
-          : `Arquivo já removido do Storage, mas o registro #${row.id} NÃO foi excluído: ${delErr.message}. O documento agora aponta para um arquivo inexistente — tente excluir novamente.`,
+        `Arquivo removido do Storage, mas o registro #${row.id} NÃO foi excluído: ${delErr.message}. O documento agora aponta para um arquivo inexistente — tente excluir novamente.`,
       );
       await load();
       return;
     }
     await load();
-    toast.success(
-      missing ? "Registro removido (arquivo não existia no Storage)." : "Documento removido.",
-    );
+    toast.success("Documento removido.");
   }
+
 
 
   const filteredDocs = useMemo(() => {

@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Upload, Trash2, ImageIcon, FileText, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { removeFromStorage } from "@/lib/storage-remove";
+import { removeFromStorageStrict } from "@/lib/storage-remove";
+import { sortFotos } from "@/lib/foto-order";
+
 
 
 const FOTOS_BUCKET = "imovel_fotos";
@@ -69,13 +71,12 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     const { data, error } = await supabase
       .from("imovel_fotos")
       .select("id,caminho_arquivo,ordem")
-      .eq("imovel_id", imovelId)
-      .order("ordem", { ascending: true })
-      .order("id", { ascending: true });
+      .eq("imovel_id", imovelId);
     if (error) setErr(error.message);
-    else setFotos(data ?? []);
+    else setFotos(sortFotos(data ?? []) as FotoRow[]);
     setLoading(false);
   }
+
 
   useEffect(() => {
     load();
@@ -110,18 +111,30 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     setUploading(true);
     const count = pending.length;
     try {
-      // Buscar sequencial atual, tanto dos caminhos no banco quanto dos objetos no bucket
+      // Próximo sequencial = MAIOR já usado + 1 (nunca por contagem),
+      // considerando os caminhos no banco e os objetos existentes no bucket.
       const dbPaths = fotos.map((f) => f.caminho_arquivo);
       const { data: listData } = await supabase.storage
         .from(FOTOS_BUCKET)
         .list("", { limit: 1000, search: `imovel_${pad3(imovelId)}_` });
       const bucketPaths = (listData ?? []).map((o) => o.name);
-      let seq = maxSequencial([...dbPaths, ...bucketPaths], imovelId);
+      const allPaths = [...dbPaths, ...bucketPaths];
+      // Sequenciais já ocupados (independente da extensão).
+      const taken = new Set<number>();
+      const re = new RegExp(`^imovel_${pad3(imovelId)}_(\\d+)\\.`);
+      for (const p of allPaths) {
+        const base = (p.split("/").pop() ?? p).toLowerCase();
+        const m = base.match(re);
+        if (m) taken.add(parseInt(m[1], 10));
+      }
+      let seq = maxSequencial(allPaths, imovelId);
 
-      let ordem = fotos.length;
       for (const file of pending) {
-        seq += 1;
-        ordem += 1;
+        // Avança até achar um sequencial livre, em vez de falhar o upload.
+        do {
+          seq += 1;
+        } while (taken.has(seq));
+        taken.add(seq);
         const path = `imovel_${pad3(imovelId)}_${seq}.${extFromName(file.name)}`;
         const { error: upErr } = await supabase.storage
           .from(FOTOS_BUCKET)
@@ -129,7 +142,7 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
         if (upErr) throw new Error(upErr.message);
         const { error: insErr } = await supabase
           .from("imovel_fotos")
-          .insert({ imovel_id: imovelId, caminho_arquivo: path, ordem });
+          .insert({ imovel_id: imovelId, caminho_arquivo: path, ordem: seq });
         if (insErr) {
           await supabase.storage.from(FOTOS_BUCKET).remove([path]);
           throw new Error(insErr.message);
@@ -146,24 +159,19 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     }
   }
 
+
   async function remove(row: FotoRow) {
     if (!confirm("Remover esta foto?")) return;
     setErr(null);
 
-    // 1) Storage primeiro (remove() não erra em caminho inexistente — comparamos o retorno).
-    let missing = false;
+    // 1) Storage primeiro. Retorno vazio NÃO é "arquivo inexistente":
+    //    pode ser objeto inacessível. Nesse caso mantemos a linha no banco.
     try {
-      const out = await removeFromStorage(FOTOS_BUCKET, [row.caminho_arquivo]);
-      missing = out.missing.length > 0;
-      if (missing) {
-        toast.warning(
-          `Arquivo "${row.caminho_arquivo}" não foi encontrado no bucket "${FOTOS_BUCKET}". O registro será removido; verifique arquivos órfãos no Storage.`,
-        );
-      }
+      await removeFromStorageStrict(FOTOS_BUCKET, [row.caminho_arquivo]);
     } catch (e) {
       const msg = (e as Error).message;
       setErr(msg);
-      toast.error(`Falha ao remover o arquivo do Storage: ${msg}. O registro foi mantido.`);
+      toast.error(`Falha ao remover o arquivo do Storage: ${msg}`);
       return;
     }
 
@@ -172,16 +180,15 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     if (delDbErr) {
       setErr(delDbErr.message);
       toast.error(
-        missing
-          ? `O registro da foto #${row.id} não pôde ser excluído: ${delDbErr.message}.`
-          : `Arquivo já removido do Storage, mas o registro da foto #${row.id} NÃO foi excluído: ${delDbErr.message}. A galeria vai exibir imagem quebrada — tente remover novamente.`,
+        `Arquivo removido do Storage, mas o registro da foto #${row.id} NÃO foi excluído: ${delDbErr.message}. A galeria vai exibir imagem quebrada — tente remover novamente.`,
       );
       await load();
       return;
     }
     await load();
-    toast.success(missing ? "Registro removido (arquivo não existia no Storage)." : "Foto removida.");
+    toast.success("Foto removida.");
   }
+
 
 
   return (

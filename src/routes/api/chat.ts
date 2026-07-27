@@ -4,6 +4,7 @@ import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { sortFotos } from "@/lib/foto-order";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
@@ -21,13 +22,17 @@ const SYSTEM_PROMPT = `Você é o ImobIA, copiloto corporativo da imobiliária L
 - Ao listar imóveis, NÃO repita os detalhes em texto: os imóveis são renderizados como cards visuais pelo frontend. Escreva apenas uma introdução curta (1-2 frases) resumindo o que foi encontrado.
 - Quando a tool retornar { cidade_fora_portfolio: true }: explique que a Litoral Prime não atua na cidade solicitada e liste as cidades disponíveis em cidades_disponiveis. Não sugira alternativas fora dessa lista.
 - Quando a tool retornar imóveis vazios mas a cidade EXISTE no portfólio: diga que não há imóveis com aquelas características e sugira ajustar os filtros (ampliar faixa de valor, remover algum critério).
+- Características que aparecem só no texto livre (churrasqueira, vista para o mar, piscina aquecida, mobiliado, sacada etc.) vão no parâmetro descricao_contem, combinado com os filtros estruturados. Ex: "apartamento em Itapema com churrasqueira" → tipo="apartamento", cidade="Itapema", descricao_contem="churrasqueira".
 
 ## Regras — Documentos
-- Responda SOMENTE com base no conteúdo devolvido por buscar_documentos. Nunca invente cláusulas, prazos, regras ou trechos.
-- SEMPRE cite o nome/título do documento (e a categoria, quando útil) que embasa cada afirmação. Quando o documento estiver vinculado a um imóvel, mencione o vínculo.
+- Responda SOMENTE com base no conteúdo devolvido por buscar_documentos. Se a tool não devolver texto, diga isso claramente — NUNCA invente cláusulas, prazos, exigências ou trechos.
+- O corretor NÃO precisa citar o nome do documento. Pergunte-se apenas qual é o ASSUNTO e mande a pergunta inteira no parâmetro termo; a tool procura cada palavra relevante no conteúdo dos documentos.
+- A base cobre documentos INSTITUCIONAIS (sem vínculo a imóvel) e documentos VINCULADOS a um imóvel. Considere os dois.
+- SEMPRE indique de qual documento veio a informação (título e, quando útil, categoria e vínculo). Se mais de um documento embasar a resposta, cite cada um.
 - Cite trechos curtos entre aspas quando forem decisivos; não copie o documento inteiro.
-- Quando a tool retornar { sem_correspondencia: true }, ela devolve documentos_disponiveis: informe ao corretor que não houve correspondência para o termo e liste os documentos existentes (título, categoria e vínculo) para que ele reformule a pergunta. Não diga apenas "não encontrei".
+- Quando a tool retornar { sem_correspondencia: true }, ela devolve documentos_disponiveis JÁ COM o conteúdo: leia esse conteúdo e responda a partir dele, avisando que não houve correspondência direta com o termo. Não diga apenas "não encontrei".
 - Se o conteúdo devolvido estiver truncado (truncado: true), diga que a resposta cobre apenas parte do documento.
+
 
 ## Regras gerais
 - Não exponha dados de proprietários; apenas informações comerciais e normativas.
@@ -120,6 +125,42 @@ export const Route = createFileRoute("/api/chat")({
         const numish = z.union([z.number(), z.string()]).nullish();
         const strish = z.string().nullish();
 
+        // ---- Busca textual acento/caixa-insensível ----
+        // O Postgres do projeto não tem `unaccent` habilitado e não vamos alterar o banco.
+        // Estratégia: normalizamos o termo (remove acentos, minúsculas) e trocamos as letras
+        // que podem aparecer acentuadas por `_` (curinga de 1 caractere do LIKE), de modo que
+        // "area", "área", "ÁREA" e "Area" casem com o mesmo padrão.
+        const semAcento = (s: string) =>
+          s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+        const padraoInsensivel = (termo: string) =>
+          semAcento(termo)
+            .replace(/[%_\\,()]/g, " ")
+            .trim()
+            .replace(/[aeioucn]/g, "_");
+
+        const STOPWORDS = new Set([
+          "que","qual","quais","quanto","quantos","como","onde","para","por","com","sem",
+          "uma","uns","umas","dos","das","nos","nas","pelo","pela","este","esta","esse",
+          "essa","aquele","aquela","seu","sua","meu","minha","the","and","não","sim",
+          "sobre","quando","tem","ter","ser","foi","são","era","mais","menos","muito",
+          "todo","toda","todos","todas","exigido","preciso","precisa","favor","documento",
+          "documentos","imovel","imoveis",
+        ]);
+
+        /** Quebra a pergunta em termos relevantes (>=4 letras, sem stopwords). */
+        const termosRelevantes = (texto: string | null | undefined): string[] => {
+          if (!texto) return [];
+          const brutos = semAcento(texto)
+            .replace(/[^a-z0-9\s]/g, " ")
+            .split(/\s+/)
+            .filter(Boolean);
+          const uteis = brutos.filter((t) => t.length >= 4 && !STOPWORDS.has(t));
+          return Array.from(new Set(uteis.length ? uteis : brutos.filter((t) => t.length >= 3)));
+        };
+
+
+
         const buscarImoveis = tool({
           description:
             "Busca imóveis no portfólio da imobiliária. Aplique apenas os filtros mencionados pelo usuário; deixe os outros como null. Aceita valores em texto (ex: '800 mil', 'R$ 1,2 milhão'). Retorna até 20 imóveis.",
@@ -134,7 +175,11 @@ export const Route = createFileRoute("/api/chat")({
             area_max: numish.describe("Área máxima em m²"),
             quartos_min: numish,
             status_documentacao: strish,
+            descricao_contem: strish.describe(
+              "Filtro textual ADICIONAL e opcional aplicado à descrição do imóvel. Use para características que só aparecem no texto livre (ex: 'churrasqueira', 'vista para o mar', 'piscina aquecida', 'mobiliado'). Pode ser combinado com os demais filtros. Informe apenas as palavras-chave, sem frases inteiras.",
+            ),
           }),
+
           execute: async (args) => {
             const tipo = args.tipo?.trim() || null;
             const cidade = args.cidade?.trim() || null;
@@ -163,6 +208,11 @@ export const Route = createFileRoute("/api/chat")({
             if (areaMax !== null) q = q.lte("area_m2", areaMax);
             if (quartosMin !== null) q = q.gte("quartos", quartosMin);
             if (statusDoc) q = q.ilike("status_documentacao", `%${statusDoc}%`);
+            // Filtro textual adicional na descrição (acento/caixa-insensível).
+            for (const t of termosRelevantes(args.descricao_contem)) {
+              q = q.ilike("descricao", `%${padraoInsensivel(t)}%`);
+            }
+
             const { data, error } = await q;
             if (error) return { erro: error.message, imoveis: [] };
             const imoveis = data ?? [];
@@ -232,10 +282,10 @@ export const Route = createFileRoute("/api/chat")({
 
         const buscarDocumentos = tool({
           description:
-            "Busca na base documental da imobiliária (normas, contratos, procedimentos, políticas internas). Use para perguntas sobre conteúdo normativo, contratual ou procedimental — NÃO para características ou preços de imóveis. O termo é procurado no título e no conteúdo do documento. Retorna o conteúdo integral de documentos pequenos.",
+            "Busca na base documental da imobiliária (normas, contratos, procedimentos, políticas internas, documentos vinculados a imóveis). Use para perguntas sobre conteúdo normativo, contratual ou procedimental — NÃO para características ou preços de imóveis. Passe a PERGUNTA ou o ASSUNTO no campo `termo`: cada palavra relevante é procurada separadamente no CONTEÚDO, no título e na descrição, ignorando acentos e maiúsculas. Não é necessário citar o nome do documento. Se nada casar, a tool devolve todos os documentos com o conteúdo deles.",
           inputSchema: z.object({
             termo: strish.describe(
-              "Palavra ou expressão-chave a procurar no título e no conteúdo. Deixe null para listar todos os documentos.",
+              "Assunto ou pergunta do usuário (ex: 'o que é exigido para imóvel na planta'). Deixe null para listar todos os documentos.",
             ),
             categoria: strish.describe("Filtrar por categoria, ex: Contrato, Manual, Matrícula"),
             imovel_id: numish.describe("Filtrar documentos vinculados a um imóvel específico"),
@@ -247,65 +297,78 @@ export const Route = createFileRoute("/api/chat")({
 
             const baseSelect = "id, titulo, categoria, descricao, imovel_id, conteudo_text";
 
+            const montar = (rows: DocRowLite[], termoFoco: string) =>
+              rows.map((d) => {
+                const texto = d.conteudo_text ?? "";
+                const integral = texto.length <= FULL_LIMIT;
+                const { conteudo, truncado } = integral
+                  ? { conteudo: texto, truncado: false }
+                  : trechoAmplo(texto, termoFoco);
+                return {
+                  id: d.id,
+                  titulo: d.titulo,
+                  categoria: d.categoria,
+                  descricao: d.descricao,
+                  imovel_id: d.imovel_id,
+                  vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento institucional",
+                  conteudo,
+                  truncado,
+                  tamanho_total: texto.length,
+                };
+              });
+
+            /** Fallback: catálogo completo COM o conteúdo dos documentos. */
             const listarDisponiveis = async () => {
-              const { data } = await supabase
-                .from("documentos")
-                .select("id, titulo, categoria, descricao, imovel_id")
-                .limit(50);
-              return (data ?? []).map((d) => ({
-                id: d.id,
-                titulo: d.titulo,
-                categoria: d.categoria,
-                descricao: d.descricao,
-                imovel_id: d.imovel_id,
-                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
-              }));
+              const { data } = await supabase.from("documentos").select(baseSelect).limit(20);
+              return montar((data ?? []) as DocRowLite[], "");
             };
+
+            const termos = termosRelevantes(termo);
 
             let q = supabase.from("documentos").select(baseSelect).limit(10);
             if (categoria) q = q.ilike("categoria", `%${categoria}%`);
             if (imovelId !== null) q = q.eq("imovel_id", imovelId);
-            // Termo procurado no título E no conteúdo.
-            if (termo) q = q.or(`titulo.ilike.%${termo}%,conteudo_text.ilike.%${termo}%`);
+            // Cada termo relevante é procurado separadamente (OR) no conteúdo,
+            // no título e na descrição — acento/caixa-insensível.
+            if (termos.length) {
+              const clauses = termos.flatMap((t) => {
+                const p = padraoInsensivel(t);
+                if (!p) return [];
+                return [
+                  `conteudo_text.ilike.%${p}%`,
+                  `titulo.ilike.%${p}%`,
+                  `descricao.ilike.%${p}%`,
+                ];
+              });
+              if (clauses.length) q = q.or(clauses.join(","));
+            }
 
             const { data, error } = await q;
             if (error) return { erro: error.message, documentos: [] };
 
             const rows = (data ?? []) as DocRowLite[];
 
-            // FALLBACK: nada encontrado → devolve o catálogo disponível.
+            // FALLBACK: nenhum termo casou → devolve os documentos com o conteúdo.
             if (rows.length === 0) {
               return {
                 total: 0,
                 documentos: [],
                 sem_correspondencia: true,
                 termo_buscado: termo,
+                termos_usados: termos,
                 documentos_disponiveis: await listarDisponiveis(),
               };
             }
 
-            const documentos = rows.map((d) => {
-              const texto = d.conteudo_text ?? "";
-              const integral = texto.length <= FULL_LIMIT;
-              const { conteudo, truncado } = integral
-                ? { conteudo: texto, truncado: false }
-                : trechoAmplo(texto, termo ?? "");
-              return {
-                id: d.id,
-                titulo: d.titulo,
-                categoria: d.categoria,
-                descricao: d.descricao,
-                imovel_id: d.imovel_id,
-                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
-                conteudo,
-                truncado,
-                tamanho_total: texto.length,
-              };
-            });
-
-            return { total: documentos.length, documentos };
+            return {
+              total: rows.length,
+              termos_usados: termos,
+              documentos: montar(rows, termos[0] ?? ""),
+            };
           },
         });
+
+
 
         try {
           const gateway = createLovableAiGatewayProvider(apiKey);
@@ -344,12 +407,9 @@ export const Route = createFileRoute("/api/chat")({
                 const key = String(im.id);
                 if (seen.has(key)) continue;
                 seen.add(key);
-                const fotos = [...(im.imovel_fotos ?? [])]
-                  .filter((f) => !!f.caminho_arquivo)
-                  .sort(
-                    (a, b) =>
-                      (a.ordem ?? 9999) - (b.ordem ?? 9999) || (a.id ?? 0) - (b.id ?? 0),
-                  );
+                // Ordem canônica compartilhada com a galeria: a primeira é a capa.
+                const fotos = sortFotos(im.imovel_fotos ?? []);
+
                 const { imovel_fotos: _drop, ...rest } = im;
                 imoveis.push({ ...rest, foto: fotos[0]?.caminho_arquivo ?? null });
               }

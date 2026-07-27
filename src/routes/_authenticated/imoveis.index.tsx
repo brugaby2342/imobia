@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Plus, Pencil, Trash2, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { removeFromStorage } from "@/lib/storage-remove";
+import { removeFromStorageStrict } from "@/lib/storage-remove";
 import { listImoveis, deleteImovel } from "@/lib/imoveis.functions";
 
 
@@ -49,15 +49,9 @@ function ListaImoveis() {
       if (fotosErr) throw new Error(fotosErr.message);
 
       const paths = (fotos ?? []).map((f) => f.caminho_arquivo).filter(Boolean);
-      let missing: string[] = [];
       if (paths.length) {
-        const out = await removeFromStorage("imovel_fotos", paths);
-        missing = out.missing;
-        if (missing.length) {
-          toast.warning(
-            `${missing.length} arquivo(s) de foto não foram encontrados no bucket (ex: ${missing[0]}). Verifique arquivos órfãos no Storage.`,
-          );
-        }
+        // Resposta vazia do Storage não é "arquivo inexistente": aborta a exclusão.
+        await removeFromStorageStrict("imovel_fotos", paths);
       }
 
       // 2) Exclui o imóvel (fotos em cascata; documentos ficam sem vínculo).
@@ -72,6 +66,7 @@ function ListaImoveis() {
         await refetch();
         return;
       }
+
 
       await refetch();
       router.invalidate();
