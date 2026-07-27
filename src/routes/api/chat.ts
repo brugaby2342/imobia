@@ -364,28 +364,6 @@ export const Route = createFileRoute("/api/chat")({
         });
 
 
-            const documentos = rows.map((d) => {
-              const texto = d.conteudo_text ?? "";
-              const integral = texto.length <= FULL_LIMIT;
-              const { conteudo, truncado } = integral
-                ? { conteudo: texto, truncado: false }
-                : trechoAmplo(texto, termo ?? "");
-              return {
-                id: d.id,
-                titulo: d.titulo,
-                categoria: d.categoria,
-                descricao: d.descricao,
-                imovel_id: d.imovel_id,
-                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
-                conteudo,
-                truncado,
-                tamanho_total: texto.length,
-              };
-            });
-
-            return { total: documentos.length, documentos };
-          },
-        });
 
         try {
           const gateway = createLovableAiGatewayProvider(apiKey);
