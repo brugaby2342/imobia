@@ -1,109 +1,68 @@
 {
   "projeto": "ImobIA",
-  "ultima_atualizacao": "26/07/2026",
+  "ultima_atualizacao": "27/07/2026",
   "confirmado_funcionando": [
-    "Auth + RBAC (admin/corretor) com gate nas rotas _authenticated.",
+    "Auth + RBAC (admin/corretor) com gate de rotas _authenticated.",
     "CRUD de imóveis.",
     "Busca em linguagem natural via Gemini 2.5 Flash em /api/chat, com cards.",
-    "Upload de fotos no bucket imovel_fotos, público, com nomenclatura imovel_{id 3 dígitos}_{sequencial}.{extensao} na raiz do bucket.",
+    "Busca textual na descrição do imóvel com ilike, ignorando acentos e maiúscula, combinável com filtros estruturados na mesma consulta.",
+    "Consulta da IA ao conteúdo dos documentos via coluna de texto, sem exigir que o usuário cite o nome do documento; a resposta indica o documento de origem e cobre documentos institucionais e vinculados a imóvel.",
+    "Upload de fotos com sequencial calculado por maior número + 1, não por contagem, evitando colisão após exclusões no meio da sequência.",
+    "Ordem estável das fotos na galeria, na listagem e nos cards; a primeira foto é a capa.",
+    "Exclusão de foto removendo o arquivo do Storage, com retorno vazio de remove() tratado como erro real e não como arquivo inexistente.",
+    "Exclusão de imóvel com FK em cascata (imovel_fotos) e SET NULL (documentos).",
+    "Toasts de sucesso e erro.",
+    "Sanitização de nome de arquivo com decodeURIComponent -> normalize NFD -> regex.",
     "Campo de upload de fotos sempre visível na edição, com estado vazio.",
     "Estado de sucesso após cadastro, sem redirecionar para o chat.",
-    "Toasts de sucesso e erro.",
-    "Sanitização de nome de arquivo com decodeURIComponent -> normalize('NFD') removendo diacríticos -> regex [\\w.-].",
-    "Foto de capa exibida no card do resultado da pesquisa, trazida na mesma consulta da tool buscar_imoveis.",
+    "Foto de capa no card do resultado da pesquisa, trazida na mesma consulta.",
     "Módulo independente de documentos, com vínculo opcional a imóvel.",
-    "RLS nas tabelas imoveis, imovel_fotos, documentos, profiles e nos buckets."
+    "RLS nas tabelas e nos buckets."
+  ],
+  "causa_raiz_resolvida": [
+    "Faltava política de SELECT em storage.objects para o bucket imovel_fotos.",
+    "Sem ela, a API de Storage não localizava o objeto: remove() retornava vazio sem erro e list() usado no cálculo do sequencial via zero arquivos, gerando colisão de nome.",
+    "O bucket público mascarava o problema, porque leitura por URL pública não passa por RLS; apenas operações autenticadas falhavam.",
+    "Corrigido manualmente via CREATE POLICY para authenticated, sem Lovable.",
+    "A política foi mantida apesar do aviso genérico do Supabase sobre Clients can list all files, porque esse alerta quebraria a exclusão e o upload se aplicado ao pé da letra.",
+    "A listagem ficou restrita a authenticated (corretor e admin); a escrita segue restrita a admin via private.is_admin()."
   ],
   "pendencias_via_lovable": [
     {
       "prioridade": "alta",
-      "item": "Corrigir a exclusão de imóvel que hoje falha por FK em imovel_fotos sem ON DELETE CASCADE.",
-      "detalhe": "Resolver via migration com cascade em imovel_fotos e documentos, ou excluir os filhos antes do pai."
-    },
-    {
-      "prioridade": "alta",
-      "item": "Remover o bloco de upload de documentos do formulário de cadastro de imóvel.",
-      "detalhe": "Documentos vinculados a imóvel devem aparecer só na listagem de imóveis e nos cards do resultado da pesquisa, apenas com download."
-    },
-    {
-      "prioridade": "alta",
-      "item": "Implementar consulta da IA ao conteúdo de documentos via coluna conteudo text.",
-      "detalhe": "Criar ou ajustar tool que filtre por palavra-chave e/ou imovel_id e devolva o texto ao modelo; o prompt deve exigir citação da origem do documento."
+      "item": "Card expansível: ao clicar, abrir modal com galeria navegável das demais fotos, todas as informações e a descrição completa, hoje truncada no card, mais documentos vinculados com ícone de download."
     },
     {
       "prioridade": "media",
-      "item": "Abrir modal de detalhe do imóvel com galeria das demais fotos e descrição integral."
+      "item": "Bloco de documentos ainda presente na rota /imoveis/novo: remover por completo upload, lista e estado vazio."
     },
     {
       "prioridade": "media",
-      "item": "Após cadastrar foto na edição, oferecer também Cadastrar outro imóvel e Voltar à listagem."
+      "item": "Após upload de foto na tela de edição, a única ação oferecida é voltar ao chat: incluir Cadastrar outro imóvel e Voltar à listagem."
     },
     {
       "prioridade": "media",
-      "item": "Omitir itens com valor 0, sem mostrar 0 quartos ou 0 suítes."
+      "item": "Campo de conteúdo (textarea) no formulário de cadastro e edição de documento: hoje o texto que a IA consulta só pode ser preenchido direto no banco. Sem extração automática de PDF, fora de escopo."
     },
     {
       "prioridade": "baixa",
-      "item": "No cadastro de documento, manter só a ação de cadastrar novo e remover o botão Voltar à listagem."
+      "item": "Tela de cadastro de documento: manter apenas cadastrar novo, remover o botão Voltar à listagem."
     },
     {
       "prioridade": "baixa",
-      "item": "Substituir as perguntas de exemplo do chat por três novas que demonstrem melhor as capacidades da aplicação."
+      "item": "Substituir as perguntas de exemplo do chat por três que cubram capacidades distintas: filtro estruturado, busca na descrição e consulta a conteúdo de documento."
     }
   ],
-  "itens_condicionais": [
-    {
-      "titulo": "AGENTES ESPECIALIZADOS - DECISÃO POSTERGADA COM PORTÃO DE DECISÃO",
-      "status": "condicional",
-      "nao_entra_na_fila": true,
-      "situacao_atual": "A especialização existe em nível de tools, não de agentes. Há uma única chamada ao Gemini 2.5 Flash em /api/chat, com duas tools de domínio distinto (buscar_imoveis e busca em documentos) e o modelo decidindo qual chamar. Não há orquestrador nem prompts de sistema separados por agente.",
-      "escopo_minimo_previsto": "Descritivos de tool delimitando explicitamente o domínio de cada uma e prompt de sistema com seções separadas por especialidade, incluindo regras de resposta para imóveis e para documentos, com citação do documento de origem. Esse escopo entrega comportamento especializado sem alterar a arquitetura.",
-      "escopo_arquitetura_multiagente_nao_aprovado": "Orquestrador roteando para dois agentes com chamadas separadas ao modelo, cada um com prompt de sistema próprio.",
-      "custos_identificados": [
-        "Maior latência, perceptível na gravação do vídeo.",
-        "Mais pontos de falha.",
-        "Mais crédito por iteração.",
-        "Refatoração do /api/chat, que é a peça central da demonstração e não pode quebrar."
-      ],
-      "porta_de_decisao": {
-        "avaliar_em": "28/07/2026",
-        "condicoes": [
-          "Itens de prioridade alta 1 a 5 fechados e testados.",
-          "README e parte teórica já com rascunho."
-        ],
-        "regra": "Se qualquer uma das condições falhar, congelar o escopo e mover para trabalhos futuros. Se aprovado, implementar preservando o comportamento atual como fallback, sem substituir o fluxo que já funciona."
-      },
-      "nomenclatura_considerada": [
-        "pesquisador_imovel",
-        "pesquisador_documento"
-      ],
-      "registro_para_parte_teorica": "A escolha por especialização via tools em vez de orquestração multiagente é uma decisão fundamentada em volume de dados e prazo, o mesmo raciocínio aplicado à escolha de conteudo text em vez de pgvector. Ambas devem ser apresentadas como decisões de engenharia justificadas, não como escopo não realizado."
-    }
+  "fora_do_lovable": [
+    "Verificar RBAC pela interface com usuário de perfil corretor: confirmar que a busca e as fotos funcionam e que as telas de cadastro/edição estão bloqueadas.",
+    "Excluir os imóveis de teste, com descrição iniciando em TESTE, removendo antes os arquivos do Storage."
   ],
-  "correcoes_de_rumo": [
-    "Upload de fotos só é liberado depois que o imóvel existe, porque o id é necessário para a nomenclatura e para o vínculo em imovel_fotos.",
-    "Não implementar retenção de arquivos em memória antes do save; essa abordagem foi descartada por decisão deliberada.",
-    "Documentos seguem independentes, com vínculo opcional a imóvel.",
-    "Respostas da IA sobre documentos devem citar explicitamente o documento de origem."
+  "encerrado_sem_correcao": [
+    "Fotos do seed não aparecem: verificado por SQL; a integridade está confirmada, todo caminho_arquivo aponta para arquivo existente e o número do arquivo corresponde ao imovel_id. Os imóveis sem foto eram apenas os de teste. Não havia bug."
   ],
-  "incidentes_encerrados": [
-    {
-      "item": "Exclusão de foto no Storage falhando por 'arquivo não encontrado'.",
-      "causa_raiz": "Faltava política de SELECT em storage.objects para o bucket imovel_fotos, então a API de Storage não localizava o objeto para remove() e list().",
-      "resolucao": "CREATE POLICY aplicado manualmente, restrito a authenticated, mantendo a necessidade operacional apesar do aviso do Supabase."
-    },
-    {
-      "item": "Colisão de nome no upload de fotos.",
-      "causa_raiz": "Sem SELECT em storage.objects, o list() retornava zero arquivos e o sequencial era calculado errado.",
-      "resolucao": "Problema de raiz encerrado junto com a política de SELECT; o ponto restante é ajustar o cliente para tratar retornos vazios e adotar maior+1 no cálculo do sequencial."
-    }
-  ],
-  "pendencias_residuais_lovable": [
-    "Tratar no cliente o retorno vazio de remove() para evitar falso negativo de 'arquivo não encontrado'.",
-    "Calcular o sequencial do nome por maior+1 em vez de contagem, para evitar colisões após exclusões intermediárias."
-  ],
-  "observacoes": [
-    "Executar as pendências apenas via Lovable, não via Copilot/VS Code, para manter uma única fonte de mudança no código publicado.",
-    "Manter esta memória consistente com docs/notas-desenvolvimento.md para evitar divergência de estado."
+  "decisoes_arquiteturais_registradas": [
+    "Upload de fotos só é liberado depois que o imóvel existe, porque o id é necessário para a nomenclatura e para o vínculo.",
+    "Consulta a documentos usa coluna de texto, não embeddings; pgvector fica como evolução futura, justificada pelo volume de documentos.",
+    "Especialização por tools (buscar_imoveis e busca em documentos) com uma única chamada ao modelo; orquestração multiagente permanece condicional ao portão de decisão de 28/07 já registrado."
   ]
 }

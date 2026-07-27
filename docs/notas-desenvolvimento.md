@@ -1,63 +1,64 @@
 # Notas de Desenvolvimento - ImobIA
 
-## Estado Confirmado em 26/07/2026
+## Estado Confirmado em 27/07/2026
 
-- Auth + RBAC (admin/corretor) com gate nas rotas `_authenticated`.
+- Auth + RBAC (admin/corretor) com gate de rotas `_authenticated`.
 - CRUD de imóveis.
 - Busca em linguagem natural via Gemini 2.5 Flash em `/api/chat`, com cards.
-- Upload de fotos no bucket `imovel_fotos`, público, com nomenclatura `imovel_{id 3 dígitos}_{sequencial}.{extensao}` na raiz do bucket.
+- Busca textual na descrição do imóvel com `ilike`, ignorando acentos e caixa, combinável com filtros estruturados na mesma consulta.
+- Consulta da IA ao conteúdo dos documentos via coluna de texto, sem exigir que o usuário cite o nome do documento; a resposta indica o documento de origem e cobre documentos institucionais e vinculados a imóvel.
+- Upload de fotos com sequencial calculado por maior número + 1, não por contagem, evitando colisão após exclusões no meio da sequência.
+- Ordem estável das fotos na galeria, na listagem e nos cards; a primeira foto é a capa.
+- Exclusão de foto removendo o arquivo do Storage, com retorno vazio de `remove()` tratado como erro real e não como arquivo inexistente.
+- Exclusão de imóvel com FK em cascata (`imovel_fotos`) e `SET NULL` (`documentos`).
+- Toasts de sucesso e erro.
+- Sanitização de nome de arquivo com `decodeURIComponent` -> `normalize NFD` -> regex.
 - Campo de upload de fotos sempre visível na edição, com estado vazio.
 - Estado de sucesso após cadastro, sem redirecionar para o chat.
-- Toasts de sucesso e erro.
-- Sanitização de nome de arquivo com `decodeURIComponent` -> `normalize('NFD')` removendo diacríticos -> regex `[\w.-]`.
-- Foto de capa exibida no card do resultado da pesquisa, trazida na mesma consulta da tool `buscar_imoveis`.
+- Foto de capa no card do resultado da pesquisa, trazida na mesma consulta.
 - Módulo independente de documentos, com vínculo opcional a imóvel.
-- RLS nas tabelas `imoveis`, `imovel_fotos`, `documentos`, `profiles` e nos buckets.
+- RLS nas tabelas e nos buckets.
+
+## Causa Raiz Resolvida
+
+- Faltava política de `SELECT` em `storage.objects` para o bucket `imovel_fotos`.
+- Sem ela, a API de Storage não localizava o objeto: `remove()` retornava vazio sem erro e `list()` usado no cálculo do sequencial via zero arquivos, gerando colisão de nome.
+- O bucket público mascarava o problema, porque leitura por URL pública não passa por RLS; apenas operações autenticadas falhavam.
+- Corrigido manualmente via `CREATE POLICY` para `authenticated`, sem Lovable.
+- A política foi mantida apesar do aviso genérico do Supabase sobre "Clients can list all files", porque esse alerta quebraria a exclusão e o upload se aplicado ao pé da letra.
+- A listagem ficou restrita a `authenticated` (corretor e admin); a escrita segue restrita a admin via `private.is_admin()`.
 
 ## Pendências Ativas
 
 ### Alta prioridade
 
-1. Corrigir a exclusão de imóvel que hoje falha por FK em `imovel_fotos` sem `ON DELETE CASCADE`.
-2. Remover o bloco de upload de documentos do formulário de cadastro de imóvel.
-3. Implementar consulta da IA ao conteúdo de documentos via coluna `conteudo text`, com tool que filtre por palavra-chave e/ou `imovel_id` e devolva o texto ao modelo.
+1. Card expansível: ao clicar, abrir modal com galeria navegável das demais fotos, todas as informações e a descrição completa, hoje truncada no card, mais documentos vinculados com ícone de download.
 
 ### Prioridade média
 
-6. Abrir modal de detalhe do imóvel com galeria das demais fotos e descrição integral.
-7. Após cadastrar foto na edição, oferecer também `Cadastrar outro imóvel` e `Voltar à listagem`.
-8. Omitir itens com valor 0, sem mostrar `0 quartos` ou `0 suítes`.
+2. Bloco de documentos ainda presente na rota `/imoveis/novo`: remover por completo upload, lista e estado vazio.
+3. Após upload de foto na tela de edição, a única ação oferecida é voltar ao chat: incluir `Cadastrar outro imóvel` e `Voltar à listagem`.
+4. Campo de conteúdo (`textarea`) no formulário de cadastro e edição de documento: hoje o texto que a IA consulta só pode ser preenchido direto no banco. Sem extração automática de PDF, fora de escopo.
 
 ### Prioridade baixa
 
-9. No cadastro de documento, manter só a ação de cadastrar novo e remover o botão `Voltar à listagem`.
-10. Substituir as perguntas de exemplo do chat por três novas que demonstrem melhor as capacidades da aplicação.
+5. Tela de cadastro de documento: manter apenas cadastrar novo, remover o botão `Voltar à listagem`.
+6. Substituir as perguntas de exemplo do chat por três que cubram capacidades distintas: filtro estruturado, busca na descrição e consulta a conteúdo de documento.
 
-## Item Condicional
+## Fora do Lovable
 
-- Agentes especializados: decisão postergada com portão de decisão. Hoje a especialização existe em nível de tools, não de agentes. A arquitetura atual segue com uma única chamada ao Gemini 2.5 Flash em `/api/chat`, com as tools `buscar_imoveis` e busca em documentos, e o modelo decide qual chamar.
-- Escopo mínimo previsto, mas não tratado como nova arquitetura: descritivos de tool delimitando explicitamente o domínio de cada uma e prompt de sistema com seções separadas por especialidade, incluindo regras de resposta para imóveis e para documentos, com citação do documento de origem.
-- Escopo multiagente não aprovado: orquestrador com dois agentes, prompts separados e chamadas separadas ao modelo.
-- Portão de decisão em 28/07/2026: só considerar orquestração real se as prioridades altas 1 a 5 estiverem fechadas e testadas e se README mais parte teórica já tiverem rascunho. Se qualquer uma falhar, congelar o escopo e mover para trabalhos futuros.
-- Nomenclatura considerada, caso venha a existir a implementação: `pesquisador_imovel` e `pesquisador_documento`.
-- Registro para a parte teórica: a opção por tools em vez de multiagente é decisão de engenharia baseada em volume de dados e prazo, no mesmo raciocínio de `conteudo text` em vez de `pgvector`.
+- Verificar RBAC pela interface com usuário de perfil corretor: confirmar que a busca e as fotos funcionam e que as telas de cadastro/edição estão bloqueadas.
+- Excluir os imóveis de teste, com descrição iniciando em `TESTE`, removendo antes os arquivos do Storage.
 
-## Incidentes Encerrados
+## Encerrado sem Correção
 
-- Exclusão de foto no Storage: a causa raiz era a ausência de política de `SELECT` em `storage.objects` para o bucket `imovel_fotos`, o que fazia `remove()` e `list()` não localizarem o objeto. O `CREATE POLICY` foi aplicado manualmente, restrito a `authenticated`, e o aviso do Supabase foi aceito por necessidade operacional.
-- Colisão de nome no upload: o problema de raiz foi encerrado junto com a política de `SELECT`, porque `list()` deixava de retornar arquivos e o sequencial era calculado errado.
+- `Fotos do seed não aparecem`: verificado por SQL; a integridade está confirmada, todo `caminho_arquivo` aponta para arquivo existente e o número do arquivo corresponde ao `imovel_id`. Os imóveis sem foto eram apenas os de teste. Não havia bug.
 
-## Pendências Residuais Lovable
+## Decisões Arquiteturais Registradas
 
-- Tratar no cliente o retorno vazio de `remove()` para evitar falso negativo de `arquivo não encontrado`.
-- Calcular o sequencial do nome por `maior+1` em vez de contagem, para evitar colisões após exclusões intermediárias.
-
-## Decisões de Arquitetura Registradas
-
-- Upload de fotos só é liberado depois que o imóvel existe, porque o `id` é necessário para a nomenclatura e para o vínculo em `imovel_fotos`.
-- Não há retenção de arquivos em memória antes do save; essa abordagem foi descartada por decisão deliberada.
-- Documentos continuam sendo independentes, com vínculo opcional a imóvel.
-- Respostas da IA sobre documentos devem citar explicitamente o documento de origem.
+- Upload de fotos só é liberado depois que o imóvel existe, porque o `id` é necessário para a nomenclatura e para o vínculo.
+- Consulta a documentos usa coluna de texto, não embeddings; `pgvector` fica como evolução futura, justificada pelo volume de documentos.
+- Especialização por tools (`buscar_imoveis` e busca em documentos) com uma única chamada ao modelo; orquestração multiagente permanece condicional ao portão de decisão de 28/07 já registrado.
 
 ## Observações
 
