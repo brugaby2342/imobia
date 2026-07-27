@@ -277,10 +277,10 @@ export const Route = createFileRoute("/api/chat")({
 
         const buscarDocumentos = tool({
           description:
-            "Busca na base documental da imobiliária (normas, contratos, procedimentos, políticas internas). Use para perguntas sobre conteúdo normativo, contratual ou procedimental — NÃO para características ou preços de imóveis. O termo é procurado no título e no conteúdo do documento. Retorna o conteúdo integral de documentos pequenos.",
+            "Busca na base documental da imobiliária (normas, contratos, procedimentos, políticas internas, documentos vinculados a imóveis). Use para perguntas sobre conteúdo normativo, contratual ou procedimental — NÃO para características ou preços de imóveis. Passe a PERGUNTA ou o ASSUNTO no campo `termo`: cada palavra relevante é procurada separadamente no CONTEÚDO, no título e na descrição, ignorando acentos e maiúsculas. Não é necessário citar o nome do documento. Se nada casar, a tool devolve todos os documentos com o conteúdo deles.",
           inputSchema: z.object({
             termo: strish.describe(
-              "Palavra ou expressão-chave a procurar no título e no conteúdo. Deixe null para listar todos os documentos.",
+              "Assunto ou pergunta do usuário (ex: 'o que é exigido para imóvel na planta'). Deixe null para listar todos os documentos.",
             ),
             categoria: strish.describe("Filtrar por categoria, ex: Contrato, Manual, Matrícula"),
             imovel_id: numish.describe("Filtrar documentos vinculados a um imóvel específico"),
@@ -292,42 +292,77 @@ export const Route = createFileRoute("/api/chat")({
 
             const baseSelect = "id, titulo, categoria, descricao, imovel_id, conteudo_text";
 
+            const montar = (rows: DocRowLite[], termoFoco: string) =>
+              rows.map((d) => {
+                const texto = d.conteudo_text ?? "";
+                const integral = texto.length <= FULL_LIMIT;
+                const { conteudo, truncado } = integral
+                  ? { conteudo: texto, truncado: false }
+                  : trechoAmplo(texto, termoFoco);
+                return {
+                  id: d.id,
+                  titulo: d.titulo,
+                  categoria: d.categoria,
+                  descricao: d.descricao,
+                  imovel_id: d.imovel_id,
+                  vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento institucional",
+                  conteudo,
+                  truncado,
+                  tamanho_total: texto.length,
+                };
+              });
+
+            /** Fallback: catálogo completo COM o conteúdo dos documentos. */
             const listarDisponiveis = async () => {
-              const { data } = await supabase
-                .from("documentos")
-                .select("id, titulo, categoria, descricao, imovel_id")
-                .limit(50);
-              return (data ?? []).map((d) => ({
-                id: d.id,
-                titulo: d.titulo,
-                categoria: d.categoria,
-                descricao: d.descricao,
-                imovel_id: d.imovel_id,
-                vinculo: d.imovel_id ? `Imóvel #${d.imovel_id}` : "Documento geral",
-              }));
+              const { data } = await supabase.from("documentos").select(baseSelect).limit(20);
+              return montar((data ?? []) as DocRowLite[], "");
             };
+
+            const termos = termosRelevantes(termo);
 
             let q = supabase.from("documentos").select(baseSelect).limit(10);
             if (categoria) q = q.ilike("categoria", `%${categoria}%`);
             if (imovelId !== null) q = q.eq("imovel_id", imovelId);
-            // Termo procurado no título E no conteúdo.
-            if (termo) q = q.or(`titulo.ilike.%${termo}%,conteudo_text.ilike.%${termo}%`);
+            // Cada termo relevante é procurado separadamente (OR) no conteúdo,
+            // no título e na descrição — acento/caixa-insensível.
+            if (termos.length) {
+              const clauses = termos.flatMap((t) => {
+                const p = padraoInsensivel(t);
+                if (!p) return [];
+                return [
+                  `conteudo_text.ilike.%${p}%`,
+                  `titulo.ilike.%${p}%`,
+                  `descricao.ilike.%${p}%`,
+                ];
+              });
+              if (clauses.length) q = q.or(clauses.join(","));
+            }
 
             const { data, error } = await q;
             if (error) return { erro: error.message, documentos: [] };
 
             const rows = (data ?? []) as DocRowLite[];
 
-            // FALLBACK: nada encontrado → devolve o catálogo disponível.
+            // FALLBACK: nenhum termo casou → devolve os documentos com o conteúdo.
             if (rows.length === 0) {
               return {
                 total: 0,
                 documentos: [],
                 sem_correspondencia: true,
                 termo_buscado: termo,
+                termos_usados: termos,
                 documentos_disponiveis: await listarDisponiveis(),
               };
             }
+
+            return {
+              total: rows.length,
+              termos_usados: termos,
+              documentos: montar(rows, termos[0] ?? ""),
+            };
+          },
+        });
+
 
             const documentos = rows.map((d) => {
               const texto = d.conteudo_text ?? "";
