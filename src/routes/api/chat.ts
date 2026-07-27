@@ -4,6 +4,7 @@ import { generateText, tool, stepCountIs } from "ai";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
 import { createLovableAiGatewayProvider } from "@/lib/ai-gateway.server";
+import { sortFotos } from "@/lib/foto-order";
 
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
