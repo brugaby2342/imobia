@@ -120,6 +120,42 @@ export const Route = createFileRoute("/api/chat")({
         const numish = z.union([z.number(), z.string()]).nullish();
         const strish = z.string().nullish();
 
+        // ---- Busca textual acento/caixa-insensível ----
+        // O Postgres do projeto não tem `unaccent` habilitado e não vamos alterar o banco.
+        // Estratégia: normalizamos o termo (remove acentos, minúsculas) e trocamos as letras
+        // que podem aparecer acentuadas por `_` (curinga de 1 caractere do LIKE), de modo que
+        // "area", "área", "ÁREA" e "Area" casem com o mesmo padrão.
+        const semAcento = (s: string) =>
+          s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+        const padraoInsensivel = (termo: string) =>
+          semAcento(termo)
+            .replace(/[%_\\,()]/g, " ")
+            .trim()
+            .replace(/[aeioucn]/g, "_");
+
+        const STOPWORDS = new Set([
+          "que","qual","quais","quanto","quantos","como","onde","para","por","com","sem",
+          "uma","uns","umas","dos","das","nos","nas","pelo","pela","este","esta","esse",
+          "essa","aquele","aquela","seu","sua","meu","minha","the","and","não","sim",
+          "sobre","quando","tem","ter","ser","foi","são","era","mais","menos","muito",
+          "todo","toda","todos","todas","exigido","preciso","precisa","favor","documento",
+          "documentos","imovel","imoveis",
+        ]);
+
+        /** Quebra a pergunta em termos relevantes (>=4 letras, sem stopwords). */
+        const termosRelevantes = (texto: string | null | undefined): string[] => {
+          if (!texto) return [];
+          const brutos = semAcento(texto)
+            .replace(/[^a-z0-9\s]/g, " ")
+            .split(/\s+/)
+            .filter(Boolean);
+          const uteis = brutos.filter((t) => t.length >= 4 && !STOPWORDS.has(t));
+          return Array.from(new Set(uteis.length ? uteis : brutos.filter((t) => t.length >= 3)));
+        };
+
+
+
         const buscarImoveis = tool({
           description:
             "Busca imóveis no portfólio da imobiliária. Aplique apenas os filtros mencionados pelo usuário; deixe os outros como null. Aceita valores em texto (ex: '800 mil', 'R$ 1,2 milhão'). Retorna até 20 imóveis.",
