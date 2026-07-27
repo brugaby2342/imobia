@@ -111,18 +111,30 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     setUploading(true);
     const count = pending.length;
     try {
-      // Buscar sequencial atual, tanto dos caminhos no banco quanto dos objetos no bucket
+      // Próximo sequencial = MAIOR já usado + 1 (nunca por contagem),
+      // considerando os caminhos no banco e os objetos existentes no bucket.
       const dbPaths = fotos.map((f) => f.caminho_arquivo);
       const { data: listData } = await supabase.storage
         .from(FOTOS_BUCKET)
         .list("", { limit: 1000, search: `imovel_${pad3(imovelId)}_` });
       const bucketPaths = (listData ?? []).map((o) => o.name);
-      let seq = maxSequencial([...dbPaths, ...bucketPaths], imovelId);
+      const allPaths = [...dbPaths, ...bucketPaths];
+      // Sequenciais já ocupados (independente da extensão).
+      const taken = new Set<number>();
+      const re = new RegExp(`^imovel_${pad3(imovelId)}_(\\d+)\\.`);
+      for (const p of allPaths) {
+        const base = (p.split("/").pop() ?? p).toLowerCase();
+        const m = base.match(re);
+        if (m) taken.add(parseInt(m[1], 10));
+      }
+      let seq = maxSequencial(allPaths, imovelId);
 
-      let ordem = fotos.length;
       for (const file of pending) {
-        seq += 1;
-        ordem += 1;
+        // Avança até achar um sequencial livre, em vez de falhar o upload.
+        do {
+          seq += 1;
+        } while (taken.has(seq));
+        taken.add(seq);
         const path = `imovel_${pad3(imovelId)}_${seq}.${extFromName(file.name)}`;
         const { error: upErr } = await supabase.storage
           .from(FOTOS_BUCKET)
@@ -130,7 +142,7 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
         if (upErr) throw new Error(upErr.message);
         const { error: insErr } = await supabase
           .from("imovel_fotos")
-          .insert({ imovel_id: imovelId, caminho_arquivo: path, ordem });
+          .insert({ imovel_id: imovelId, caminho_arquivo: path, ordem: seq });
         if (insErr) {
           await supabase.storage.from(FOTOS_BUCKET).remove([path]);
           throw new Error(insErr.message);
@@ -146,6 +158,7 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
       setUploading(false);
     }
   }
+
 
   async function remove(row: FotoRow) {
     if (!confirm("Remover esta foto?")) return;
