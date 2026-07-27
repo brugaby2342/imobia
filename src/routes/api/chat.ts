@@ -134,7 +134,11 @@ export const Route = createFileRoute("/api/chat")({
             area_max: numish.describe("Área máxima em m²"),
             quartos_min: numish,
             status_documentacao: strish,
+            descricao_contem: strish.describe(
+              "Filtro textual ADICIONAL e opcional aplicado à descrição do imóvel. Use para características que só aparecem no texto livre (ex: 'churrasqueira', 'vista para o mar', 'piscina aquecida', 'mobiliado'). Pode ser combinado com os demais filtros. Informe apenas as palavras-chave, sem frases inteiras.",
+            ),
           }),
+
           execute: async (args) => {
             const tipo = args.tipo?.trim() || null;
             const cidade = args.cidade?.trim() || null;
