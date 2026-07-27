@@ -167,6 +167,11 @@ export const Route = createFileRoute("/api/chat")({
             if (areaMax !== null) q = q.lte("area_m2", areaMax);
             if (quartosMin !== null) q = q.gte("quartos", quartosMin);
             if (statusDoc) q = q.ilike("status_documentacao", `%${statusDoc}%`);
+            // Filtro textual adicional na descrição (acento/caixa-insensível).
+            for (const t of termosRelevantes(args.descricao_contem)) {
+              q = q.ilike("descricao", `%${padraoInsensivel(t)}%`);
+            }
+
             const { data, error } = await q;
             if (error) return { erro: error.message, imoveis: [] };
             const imoveis = data ?? [];
