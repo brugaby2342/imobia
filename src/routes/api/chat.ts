@@ -402,12 +402,9 @@ export const Route = createFileRoute("/api/chat")({
                 const key = String(im.id);
                 if (seen.has(key)) continue;
                 seen.add(key);
-                const fotos = [...(im.imovel_fotos ?? [])]
-                  .filter((f) => !!f.caminho_arquivo)
-                  .sort(
-                    (a, b) =>
-                      (a.ordem ?? 9999) - (b.ordem ?? 9999) || (a.id ?? 0) - (b.id ?? 0),
-                  );
+                // Ordem canônica compartilhada com a galeria: a primeira é a capa.
+                const fotos = sortFotos(im.imovel_fotos ?? []);
+
                 const { imovel_fotos: _drop, ...rest } = im;
                 imoveis.push({ ...rest, foto: fotos[0]?.caminho_arquivo ?? null });
               }
