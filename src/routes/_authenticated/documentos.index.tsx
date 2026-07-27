@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { removeFromStorage } from "@/lib/storage-remove";
+import { removeFromStorageStrict } from "@/lib/storage-remove";
 import { listImoveis } from "@/lib/imoveis.functions";
 
 
