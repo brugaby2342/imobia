@@ -150,20 +150,14 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     if (!confirm("Remover esta foto?")) return;
     setErr(null);
 
-    // 1) Storage primeiro (remove() não erra em caminho inexistente — comparamos o retorno).
-    let missing = false;
+    // 1) Storage primeiro. Retorno vazio NÃO é "arquivo inexistente":
+    //    pode ser objeto inacessível. Nesse caso mantemos a linha no banco.
     try {
-      const out = await removeFromStorage(FOTOS_BUCKET, [row.caminho_arquivo]);
-      missing = out.missing.length > 0;
-      if (missing) {
-        toast.warning(
-          `Arquivo "${row.caminho_arquivo}" não foi encontrado no bucket "${FOTOS_BUCKET}". O registro será removido; verifique arquivos órfãos no Storage.`,
-        );
-      }
+      await removeFromStorageStrict(FOTOS_BUCKET, [row.caminho_arquivo]);
     } catch (e) {
       const msg = (e as Error).message;
       setErr(msg);
-      toast.error(`Falha ao remover o arquivo do Storage: ${msg}. O registro foi mantido.`);
+      toast.error(`Falha ao remover o arquivo do Storage: ${msg}`);
       return;
     }
 
@@ -172,16 +166,15 @@ export function FotosImovel({ imovelId }: { imovelId: number }) {
     if (delDbErr) {
       setErr(delDbErr.message);
       toast.error(
-        missing
-          ? `O registro da foto #${row.id} não pôde ser excluído: ${delDbErr.message}.`
-          : `Arquivo já removido do Storage, mas o registro da foto #${row.id} NÃO foi excluído: ${delDbErr.message}. A galeria vai exibir imagem quebrada — tente remover novamente.`,
+        `Arquivo removido do Storage, mas o registro da foto #${row.id} NÃO foi excluído: ${delDbErr.message}. A galeria vai exibir imagem quebrada — tente remover novamente.`,
       );
       await load();
       return;
     }
     await load();
-    toast.success(missing ? "Registro removido (arquivo não existia no Storage)." : "Foto removida.");
+    toast.success("Foto removida.");
   }
+
 
 
   return (
