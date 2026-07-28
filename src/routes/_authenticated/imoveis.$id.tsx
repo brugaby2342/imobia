@@ -1,8 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, List } from "lucide-react";
+
 import { toast } from "sonner";
 import { getImovel, updateImovel } from "@/lib/imoveis.functions";
 import {
@@ -84,7 +85,24 @@ function EditarImovel() {
         submitLabel="Salvar alterações"
       />
       <FotosImovel imovelId={numericId} />
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Link
+          to="/imoveis/novo"
+          className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-br from-blue-600 to-blue-800 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:brightness-110"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Cadastrar outro imóvel
+        </Link>
+        <Link
+          to="/imoveis"
+          className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+        >
+          <List className="h-3.5 w-3.5" />
+          Voltar à listagem
+        </Link>
+      </div>
       <DocumentosImovel imovelId={numericId} />
     </div>
+
   );
 }
