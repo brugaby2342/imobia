@@ -144,6 +144,7 @@ function Index() {
   const navigate = useNavigate();
   const routeCtx = Route.useRouteContext() as { role?: string };
   const isAdmin = routeCtx.role === "admin";
+  const isCorretor = routeCtx.role === "corretor";
   const search = Route.useSearch();
   const [deniedVisible, setDeniedVisible] = useState<boolean>(!!search.denied);
   useEffect(() => {
@@ -242,6 +243,15 @@ function Index() {
               <span className="hidden max-w-[200px] truncate text-xs text-slate-600 sm:inline">
                 {email}
               </span>
+            )}
+            {isCorretor && (
+              <Link
+                to="/imoveis"
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm transition hover:bg-blue-100"
+              >
+                <Building2 className="h-3.5 w-3.5" />
+                Imóveis
+              </Link>
             )}
             {isAdmin && (
               <>

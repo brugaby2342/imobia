@@ -4,7 +4,7 @@ import { Building2, ArrowLeft } from "lucide-react";
 export const Route = createFileRoute("/_authenticated/imoveis")({
   beforeLoad: ({ context }) => {
     const role = (context as { role?: string }).role;
-    if (role !== "admin") {
+    if (role !== "admin" && role !== "corretor") {
       throw redirect({ to: "/", search: { denied: 1 } });
     }
   },

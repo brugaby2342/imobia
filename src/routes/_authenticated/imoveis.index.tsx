@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Loader2, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { ImovelModal, type ImovelDetalhe } from "@/components/ImovelModal";
 import { supabase } from "@/integrations/supabase/client";
 import { removeFromStorageStrict } from "@/lib/storage-remove";
 import { listImoveis, deleteImovel } from "@/lib/imoveis.functions";
@@ -24,6 +25,8 @@ const brl = (v: number | null) =>
 
 function ListaImoveis() {
   const router = useRouter();
+  const routeCtx = Route.useRouteContext() as { role?: string };
+  const isAdmin = routeCtx.role === "admin";
   const list = useServerFn(listImoveis);
   const del = useServerFn(deleteImovel);
   const { data, isLoading, error, refetch } = useQuery({
@@ -31,6 +34,7 @@ function ListaImoveis() {
     queryFn: () => list(),
   });
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [selectedImovel, setSelectedImovel] = useState<ImovelDetalhe | null>(null);
 
   async function onDelete(id: number, label: string) {
     if (
@@ -85,13 +89,15 @@ function ListaImoveis() {
         <p className="text-sm text-slate-600">
           {data ? `${data.length} imóvel(is) cadastrado(s)` : "Carregando..."}
         </p>
-        <Link
-          to="/imoveis/novo"
-          className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-br from-blue-600 to-blue-800 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:brightness-110"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Novo imóvel
-        </Link>
+        {isAdmin && (
+          <Link
+            to="/imoveis/novo"
+            className="inline-flex items-center gap-1.5 rounded-md bg-gradient-to-br from-blue-600 to-blue-800 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:brightness-110"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Novo imóvel
+          </Link>
+        )}
       </div>
 
       {isLoading && (
@@ -122,12 +128,16 @@ function ListaImoveis() {
                 <th className="px-4 py-2.5 font-medium">Área</th>
                 <th className="px-4 py-2.5 font-medium">Quartos</th>
                 <th className="px-4 py-2.5 font-medium">Situação documental</th>
-                <th className="px-4 py-2.5" />
+                {isAdmin && <th className="px-4 py-2.5" />}
               </tr>
             </thead>
             <tbody>
               {data.map((im) => (
-                <tr key={im.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
+                <tr
+                  key={im.id}
+                  className="cursor-pointer border-b border-slate-100 last:border-0 hover:bg-slate-50/60"
+                  onClick={() => setSelectedImovel(im as ImovelDetalhe)}
+                >
                   <td className="px-4 py-3">
                     <div className="font-medium text-slate-900">{im.tipo}</div>
                     {im.bairro && <div className="text-xs text-slate-500">{im.bairro}</div>}
@@ -144,35 +154,45 @@ function ListaImoveis() {
                   <td className="px-4 py-3 max-w-[220px] truncate text-xs text-slate-500">
                     {im.status_documentacao ?? "—"}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link
-                        to="/imoveis/$id"
-                        params={{ id: String(im.id) }}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:border-blue-300 hover:text-blue-700"
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => onDelete(im.id, `${im.tipo}${im.bairro ? " · " + im.bairro : ""}`)}
-                        disabled={deletingId === im.id}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:border-red-300 hover:text-red-700 disabled:opacity-50"
-                        aria-label="Excluir"
-                      >
-                        {deletingId === im.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          to="/imoveis/$id"
+                          params={{ id: String(im.id) }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:border-blue-300 hover:text-blue-700"
+                          aria-label="Editar"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Link>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(im.id, `${im.tipo}${im.bairro ? " · " + im.bairro : ""}`);
+                          }}
+                          disabled={deletingId === im.id}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:border-red-300 hover:text-red-700 disabled:opacity-50"
+                          aria-label="Excluir"
+                        >
+                          {deletingId === im.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {selectedImovel && (
+        <ImovelModal imovel={selectedImovel} onClose={() => setSelectedImovel(null)} />
       )}
     </div>
   );
