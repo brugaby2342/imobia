@@ -132,10 +132,11 @@ function ImovelCard({ im, onOpen }: { im: Imovel; onOpen: () => void }) {
 }
 
 const SUGESTOES = [
-  "Quais apartamentos de até R$ 800 mil em Balneário Camboriú?",
-  "Casas com 3+ quartos em Florianópolis com documentação em dia",
-  "Coberturas acima de 150 m² no litoral de SC",
+  "Apartamento em Itapema até 900 mil com 3 quartos",
+  "Quais imóveis têm churrasqueira e vista para o mar?",
+  "O que é exigido na documentação de imóvel na planta?",
 ];
+
 
 function Index() {
   const navigate = useNavigate();
@@ -343,8 +344,9 @@ function Index() {
                 {m.role === "assistant" && m.imoveis && m.imoveis.length > 0 && (
                   <div className="mt-3 grid w-full gap-3 sm:grid-cols-2">
                     {m.imoveis.map((im) => (
-                      <ImovelCard key={String(im.id)} im={im} />
+                      <ImovelCard key={String(im.id)} im={im} onOpen={() => setDetalhe(im)} />
                     ))}
+
                   </div>
                 )}
               </div>
