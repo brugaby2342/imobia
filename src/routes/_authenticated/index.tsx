@@ -53,12 +53,24 @@ export const plural = (n: number, singular: string, pluralForm = `${singular}s`)
 
 const FOTOS_BUCKET = "imovel_fotos";
 
-function ImovelCard({ im }: { im: Imovel }) {
+function ImovelCard({ im, onOpen }: { im: Imovel; onOpen: () => void }) {
   const fotoUrl = im.foto
     ? supabase.storage.from(FOTOS_BUCKET).getPublicUrl(im.foto).data.publicUrl
     : null;
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="flex cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-200"
+    >
+
       <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100">
         {fotoUrl ? (
           <img
