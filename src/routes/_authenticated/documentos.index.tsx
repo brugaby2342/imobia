@@ -115,6 +115,8 @@ function DocumentosPage() {
   const [imovelId, setImovelId] = useState<string>("");
   const [filtroImovel, setFiltroImovel] = useState<string>("todos");
   const [sucesso, setSucesso] = useState<Criado[] | null>(null);
+  const [editando, setEditando] = useState<DocRow | null>(null);
+  const [salvando, setSalvando] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const listaRef = useRef<HTMLElement>(null);
 
@@ -232,6 +234,32 @@ function DocumentosPage() {
     setCategoria("");
     setDescricao("");
     setImovelId("");
+  }
+
+  async function salvarEdicao() {
+    if (!editando) return;
+    if (!editando.titulo.trim() || !editando.categoria.trim()) {
+      toast.error("Título e categoria são obrigatórios.");
+      return;
+    }
+    setSalvando(true);
+    const { error } = await supabase
+      .from("documentos")
+      .update({
+        titulo: editando.titulo.trim(),
+        categoria: editando.categoria.trim(),
+        descricao: editando.descricao?.trim() || null,
+        conteudo_text: editando.conteudo_text?.trim() || null,
+      })
+      .eq("id", editando.id);
+    setSalvando(false);
+    if (error) {
+      toast.error(`Falha ao salvar documento: ${error.message}`);
+      return;
+    }
+    setEditando(null);
+    await load();
+    toast.success("Documento atualizado.");
   }
 
   async function abrir(row: DocRow) {
