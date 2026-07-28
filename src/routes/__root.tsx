@@ -86,6 +86,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:title", content: "ImobIA — Copiloto Litoral Prime" },
+      { name: "twitter:title", content: "ImobIA — Copiloto Litoral Prime" },
+      { property: "og:description", content: "ImobIA: copiloto de consulta do portfólio da imobiliária Litoral Prime em linguagem natural." },
+      { name: "twitter:description", content: "ImobIA: copiloto de consulta do portfólio da imobiliária Litoral Prime em linguagem natural." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ef8e64bc-43b6-4dd9-af94-6250dea4d4fd/id-preview-4be0e908--0a3be9b1-202c-4b0a-8390-69191b6d2af0.lovable.app-1785235942461.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/ef8e64bc-43b6-4dd9-af94-6250dea4d4fd/id-preview-4be0e908--0a3be9b1-202c-4b0a-8390-69191b6d2af0.lovable.app-1785235942461.png" },
     ],
     links: [
       {
