@@ -151,7 +151,9 @@ function Index() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [detalhe, setDetalhe] = useState<Imovel | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
