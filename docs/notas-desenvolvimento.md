@@ -1,6 +1,6 @@
 # Notas de Desenvolvimento - ImobIA
 
-## Estado Confirmado em 27/07/2026
+## Estado Confirmado em 28/07/2026
 
 - Auth + RBAC (admin/corretor) com gate de rotas `_authenticated`.
 - CRUD de imóveis.
@@ -17,6 +17,9 @@
 - Estado de sucesso após cadastro, sem redirecionar para o chat.
 - Foto de capa no card do resultado da pesquisa, trazida na mesma consulta.
 - Módulo independente de documentos, com vínculo opcional a imóvel.
+- Item de navegação para a listagem de imóveis renderizado também para o perfil corretor.
+- Listagem em modo leitura para o corretor, sem botão `Novo imóvel` nem ícones de editar e excluir.
+- Modal de detalhe do imóvel reaproveitado na listagem, abrindo o mesmo componente dos cards do chat ao clicar na linha, sem conflito com editar ou excluir.
 - RLS nas tabelas e nos buckets.
 
 ## Causa Raiz Resolvida
@@ -50,6 +53,21 @@
 - Verificar RBAC pela interface com usuário de perfil corretor: confirmar que a busca e as fotos funcionam e que as telas de cadastro/edição estão bloqueadas.
 - Excluir os imóveis de teste, com descrição iniciando em `TESTE`, removendo antes os arquivos do Storage.
 
+## Decisão de Ferramenta Registrada
+
+- Enquanto o Lovable teve créditos disponíveis, ele foi a única ferramenta a editar código para evitar duas fontes concorrentes de alteração sobre a mesma base; ele auto-commita no repositório a cada prompt aprovado.
+- Esgotado o limite, alterações restritas ao frontend, sem migrations e sem mudança de políticas RLS, passaram a ser feitas localmente via Copilot.
+- O critério foi o raio de alcance da mudança, não a dificuldade; alterações de esquema permanecem concentradas no Lovable.
+
+## Verificação Relevante
+
+- Confirmado que o corretor já alcançava a rota da listagem digitando a URL mesmo com o link de navegação oculto, sem falha de segurança, porque as políticas de RLS continuavam aplicáveis.
+- Registro prático de que ocultar elemento de interface não constitui controle de acesso.
+
+## Observação de Ambiente Local
+
+- O arquivo `src/routeTree.gen.ts` é regerado pelo plugin do TanStack Router a cada execução e aparece como modificado por reordenação de imports; não commitar, salvo quando houver rota nova de fato.
+
 ## Encerrado sem Correção
 
 - `Fotos do seed não aparecem`: verificado por SQL; a integridade está confirmada, todo `caminho_arquivo` aponta para arquivo existente e o número do arquivo corresponde ao `imovel_id`. Os imóveis sem foto eram apenas os de teste. Não havia bug.
@@ -62,5 +80,4 @@
 
 ## Observações
 
-- Executar as pendências apenas via Lovable, não via Copilot/VS Code, para manter uma única fonte de mudança no código publicado.
 - Este arquivo deve permanecer consistente com [docs/memoria-projeto.json](/Users/brunagabrielaribeirosartor/imobia/docs/memoria-projeto.json) para evitar divergência de estado.
