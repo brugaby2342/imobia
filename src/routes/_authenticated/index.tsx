@@ -4,6 +4,8 @@ import ReactMarkdown from "react-markdown";
 import { Send, Plus, Building2, Loader2, LogOut, MapPin, Ruler, BedDouble, FileCheck2, Settings, X, FileText } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { ImovelModal } from "@/components/ImovelModal";
+
 
 export const Route = createFileRoute("/_authenticated/")({
   validateSearch: (s: Record<string, unknown>) =>
@@ -53,12 +55,24 @@ export const plural = (n: number, singular: string, pluralForm = `${singular}s`)
 
 const FOTOS_BUCKET = "imovel_fotos";
 
-function ImovelCard({ im }: { im: Imovel }) {
+function ImovelCard({ im, onOpen }: { im: Imovel; onOpen: () => void }) {
   const fotoUrl = im.foto
     ? supabase.storage.from(FOTOS_BUCKET).getPublicUrl(im.foto).data.publicUrl
     : null;
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-300 hover:shadow-md">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="flex cursor-pointer flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-200"
+    >
+
       <div className="aspect-[4/3] w-full overflow-hidden bg-slate-100">
         {fotoUrl ? (
           <img
@@ -120,10 +134,11 @@ function ImovelCard({ im }: { im: Imovel }) {
 }
 
 const SUGESTOES = [
-  "Quais apartamentos de até R$ 800 mil em Balneário Camboriú?",
-  "Casas com 3+ quartos em Florianópolis com documentação em dia",
-  "Coberturas acima de 150 m² no litoral de SC",
+  "Apartamento em Itapema até 900 mil com 3 quartos",
+  "Quais imóveis têm churrasqueira e vista para o mar?",
+  "O que é exigido na documentação de imóvel na planta?",
 ];
+
 
 function Index() {
   const navigate = useNavigate();
@@ -138,7 +153,9 @@ function Index() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
+  const [detalhe, setDetalhe] = useState<Imovel | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -331,8 +348,9 @@ function Index() {
                 {m.role === "assistant" && m.imoveis && m.imoveis.length > 0 && (
                   <div className="mt-3 grid w-full gap-3 sm:grid-cols-2">
                     {m.imoveis.map((im) => (
-                      <ImovelCard key={String(im.id)} im={im} />
+                      <ImovelCard key={String(im.id)} im={im} onOpen={() => setDetalhe(im)} />
                     ))}
+
                   </div>
                 )}
               </div>
@@ -384,6 +402,9 @@ function Index() {
           Respostas baseadas apenas no portfólio real. Sem invenção de imóveis.
         </p>
       </div>
+
+      {detalhe && <ImovelModal imovel={detalhe} onClose={() => setDetalhe(null)} />}
+
     </div>
   );
 }
