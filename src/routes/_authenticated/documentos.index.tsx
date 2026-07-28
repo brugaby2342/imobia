@@ -417,29 +417,47 @@ function DocumentosPage() {
               {pending.map((p, idx) => (
                 <li
                   key={idx}
-                  className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2"
+                  className="rounded-md border border-slate-200 bg-white px-3 py-2"
                 >
-                  <FileText className="h-3.5 w-3.5 shrink-0 text-slate-500" />
-                  <input
-                    className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                    value={p.titulo}
-                    onChange={(e) => updateTitulo(idx, e.target.value)}
-                    placeholder="Título do documento"
-                  />
-                  <span className="hidden truncate text-[11px] text-slate-500 sm:inline">
-                    {p.file.name}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => removePending(idx)}
-                    disabled={uploading}
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-md text-red-600 hover:bg-red-50"
-                    aria-label="Remover da fila"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                    <input
+                      className="min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      value={p.titulo}
+                      onChange={(e) => updateTitulo(idx, e.target.value)}
+                      placeholder="Título do documento"
+                    />
+                    <span className="hidden truncate text-[11px] text-slate-500 sm:inline">
+                      {p.file.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePending(idx)}
+                      disabled={uploading}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-md text-red-600 hover:bg-red-50"
+                      aria-label="Remover da fila"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="mt-2">
+                    <label className="mb-1 block text-[11px] font-medium text-slate-700">
+                      Conteúdo do documento (texto consultado pela IA nas perguntas do chat)
+                    </label>
+                    <textarea
+                      className="min-h-[90px] w-full resize-y rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      value={p.conteudo}
+                      onChange={(e) => updateConteudo(idx, e.target.value)}
+                      placeholder="Cole aqui o texto do documento (opcional)"
+                    />
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Opcional. Sem esse texto a IA reconhece a existência do documento, mas não
+                      responde sobre o conteúdo dele.
+                    </p>
+                  </div>
                 </li>
               ))}
+
             </ul>
           </div>
         )}
