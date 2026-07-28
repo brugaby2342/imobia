@@ -4,6 +4,8 @@ import ReactMarkdown from "react-markdown";
 import { Send, Plus, Building2, Loader2, LogOut, MapPin, Ruler, BedDouble, FileCheck2, Settings, X, FileText } from "lucide-react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { ImovelModal } from "@/components/ImovelModal";
+
 
 export const Route = createFileRoute("/_authenticated/")({
   validateSearch: (s: Record<string, unknown>) =>
@@ -400,6 +402,9 @@ function Index() {
           Respostas baseadas apenas no portfólio real. Sem invenção de imóveis.
         </p>
       </div>
+
+      {detalhe && <ImovelModal imovel={detalhe} onClose={() => setDetalhe(null)} />}
+
     </div>
   );
 }
