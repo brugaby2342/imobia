@@ -12,7 +12,8 @@ import {
   FilePlus2,
   CheckCircle2,
   Plus,
-  List,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,7 @@ type DocRow = {
   descricao: string | null;
   caminho_arquivo: string;
   imovel_id: number | null;
+  conteudo_text: string | null;
 };
 
 type ImovelLite = { id: number; tipo: string; bairro: string | null; cidade: string };
@@ -90,6 +92,7 @@ async function uploadWithCollision(file: File): Promise<string> {
 type Pending = {
   file: File;
   titulo: string;
+  conteudo: string;
 };
 
 type Criado = { id: number; titulo: string };
@@ -119,7 +122,7 @@ function DocumentosPage() {
     setLoadingDocs(true);
     const { data, error } = await supabase
       .from("documentos")
-      .select("id,titulo,categoria,descricao,caminho_arquivo,imovel_id")
+      .select("id,titulo,categoria,descricao,caminho_arquivo,imovel_id,conteudo_text")
       .order("id", { ascending: false });
     if (error) setErr(error.message);
     else setDocs(data ?? []);
@@ -152,7 +155,7 @@ function DocumentosPage() {
       const decoded = safeDecode(file.name);
       const dot = decoded.lastIndexOf(".");
       const defaultTitle = (dot >= 0 ? decoded.slice(0, dot) : decoded).replace(/[_-]+/g, " ").trim();
-      next.push({ file, titulo: defaultTitle });
+      next.push({ file, titulo: defaultTitle, conteudo: "" });
     }
     if (next.length) setPending((p) => [...p, ...next]);
     if (inputRef.current) inputRef.current.value = "";
@@ -160,6 +163,9 @@ function DocumentosPage() {
 
   function updateTitulo(idx: number, value: string) {
     setPending((prev) => prev.map((p, i) => (i === idx ? { ...p, titulo: value } : p)));
+  }
+  function updateConteudo(idx: number, value: string) {
+    setPending((prev) => prev.map((p, i) => (i === idx ? { ...p, conteudo: value } : p)));
   }
   function removePending(idx: number) {
     setPending((prev) => prev.filter((_, i) => i !== idx));
@@ -192,6 +198,7 @@ function DocumentosPage() {
             descricao: descricao.trim() || null,
             caminho_arquivo: path,
             imovel_id: link,
+            conteudo_text: p.conteudo.trim() || null,
           })
           .select("id,titulo")
           .single();
@@ -225,11 +232,6 @@ function DocumentosPage() {
     setCategoria("");
     setDescricao("");
     setImovelId("");
-  }
-
-  function voltarListagem() {
-    setSucesso(null);
-    listaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function abrir(row: DocRow) {
@@ -317,14 +319,6 @@ function DocumentosPage() {
             >
               <Plus className="h-3.5 w-3.5" />
               Cadastrar outro documento
-            </button>
-            <button
-              type="button"
-              onClick={voltarListagem}
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              <List className="h-3.5 w-3.5" />
-              Voltar à listagem
             </button>
           </div>
         </section>
