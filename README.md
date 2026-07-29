@@ -144,6 +144,8 @@ O projeto usou IA em duas frentes distintas, a IA como funcionalidade do produto
 
 Foi configurado um servidor de memória via Model Context Protocol no ambiente local, integrado ao GitHub Copilot em modo Agent, mantendo o estado da aplicação, as pendências priorizadas e as decisões arquiteturais com sua justificativa:
 
+[https://github.com/brugaby2342/imobia/tree/main/docs]
+
 `docs/memoria-projeto.json` — fonte estruturada, legível por máquina.</br>
 `docs/notas-desenvolvimento.md` — versão legível por humanos, mantida em consistência.</br>
 `docs/erros-e-aprendizados.md` - registro dos obstáculos enfrentados e contornados.
