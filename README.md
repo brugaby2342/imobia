@@ -20,17 +20,17 @@ O cenário escolhido foi uma imobiliária de médio porte no litoral norte de Sa
 
 ### Funcionalidades Principais
 
-🔍 Consulta em linguagem natural ao portfólio, com filtros combinados.
+- Consulta em linguagem natural ao portfólio, com filtros combinados.
 
-📝 Busca textual na descrição, permitindo perguntas por características que não são campos estruturados.
+- Busca textual na descrição, permitindo perguntas por características que não são campos estruturados.
 
-📄 Consulta ao conteúdo de documentos normativos por assunto.
+- Consulta ao conteúdo de documentos normativos por assunto.
 
-🏠 Gestão de imóveis — cadastro, edição e exclusão, restritos ao administrador.
+- Gestão de imóveis — cadastro, edição e exclusão, restritos ao administrador.
 
-📷 Gestão de fotos.
+- Gestão de fotos.
 
-📚 Módulo independente de documentos, com vínculo opcional a imóvel, distinguindo documentos institucionais dos específicos de uma unidade
+- Módulo independente de documentos, com vínculo opcional a imóvel, distinguindo documentos institucionais dos específicos de uma unidade
 
 ---
 
@@ -83,7 +83,7 @@ Pelo fluxo, percebe-se que o modelo não acessa o banco de dados. Ele recebe as 
 
 ---
 
-## Arquitetura
+## 🏠 Arquitetura
 
 *Camada de interface* — Aplicação React com roteamento por TanStack Router, no qual o gate de autenticação é estrutural: as rotas protegidas vivem sob um segmento reservado (_authenticated/), de modo que nenhuma tela interna é alcançável sem sessão válida.
 
@@ -93,7 +93,7 @@ Pelo fluxo, percebe-se que o modelo não acessa o banco de dados. Ele recebe as 
 
 ---
 
-## Modelo de dados
+## 🎲 Modelo de dados
 
 | Entidade        | Função        | Decisão de Modelagem        |
 | :--- | :--- | :--- |
@@ -116,7 +116,7 @@ Cada perfil corresponde a um usuário autenticado — 1:1
 
 ---
 
-## Tecnologias utilizadas
+## 💻 Tecnologias utilizadas
 
 | Camada          | Tecnologia          |
 | :--- | :--- | :--- |
@@ -152,7 +152,7 @@ Foi configurado um servidor de memória via Model Context Protocol no ambiente l
 
 ---
 
-## Segurança e Governança
+## 🔒 Segurança e Governança
 
 - Controle de acesso no banco, não na interface. 
 - Menor privilégio: O corretor lê portfólio, fotos e documentos; o administrador acrescenta as operações de escrita.
@@ -164,14 +164,14 @@ Foi configurado um servidor de memória via Model Context Protocol no ambiente l
 
 ---
 
-## Como acessar
+## 📔 Como acessar
 
 Acesse a versão publicada:
 [https://imobia-copilot.lovable.app]
 
 ---
 
-## Credenciais para teste:
+## 🔐 Credenciais para teste:
 
 As credenciais são fornecidas porque o cadastro exige autorização prévia do administrador: apenas e-mails liberados na base conseguem criar conta.
 
@@ -190,7 +190,7 @@ senha:
 
 ---
 
-## Perguntas Sugeridas para Testes
+## ﹖ Perguntas Sugeridas para Testes
 
 *Apartamento em Itapema até 900 mil com 3 quartos*
 
@@ -202,7 +202,7 @@ senha:
 
 ---
 
-Prints
+📷 Prints
 
 - Resultado da consulta com a imagem do card;
 - Consulta de documento
