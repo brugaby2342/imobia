@@ -119,7 +119,7 @@ Cada perfil corresponde a um usuário autenticado — 1:1
 ## 💻 Tecnologias utilizadas
 
 | Camada          | Tecnologia          |
-| :--- | :--- | :--- |
+| :--- | :--- |
 | Frontend          | React, TypeScript, TanStack Router, Tailwind CSS |
 | Backend          | Funções de servidor (Supabase / Lovable)          |
 | Banco de Dados           | PostgreSQL (Supabase), com Row Level Security |
