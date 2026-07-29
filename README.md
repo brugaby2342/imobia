@@ -144,9 +144,9 @@ O projeto usou IA em duas frentes distintas, a IA como funcionalidade do produto
 
 Foi configurado um servidor de memória via Model Context Protocol no ambiente local, integrado ao GitHub Copilot em modo Agent, mantendo o estado da aplicação, as pendências priorizadas e as decisões arquiteturais com sua justificativa:
 
-`docs/memoria-projeto.json` — fonte estruturada, legível por máquina
-`docs/notas-desenvolvimento.md` — versão legível por humanos, mantida em consistência
-`docs/erros-e-aprendizados.md` - 
+`docs/memoria-projeto.json` — fonte estruturada, legível por máquina.</br>
+`docs/notas-desenvolvimento.md` — versão legível por humanos, mantida em consistência.</br>
+`docs/erros-e-aprendizados.md` - registro dos obstáculos enfrentados e contornados.
 
 ---
 
@@ -174,16 +174,16 @@ Acesse a versão publicada:
 As credenciais são fornecidas porque o cadastro exige autorização prévia do administrador: apenas e-mails liberados na base conseguem criar conta.
 
 
-Administrador
-e-mail:
-senha:
+Administrador </br>
+e-mail:</br>
+senha:</br>
 
-Corretor
-e-mail: jicesa2239@kingcq.com
-senha: jicesa
+Corretor</br>
+e-mail: jicesa2239@kingcq.com</br>
+senha: jicesa</br>
 
-e-mail para teste de cadastro
-e-mail:
+e-mail para teste de cadastro</br>
+e-mail:</br>
 senha:
 
 ---
