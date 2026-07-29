@@ -1,37 +1,45 @@
-# ImobIA — Copiloto Corporativo da Litoral Prime
+<h1 align="center">ImobIA — Copiloto Corporativo da Litoral Prime</h1> </br></br>
 
+
+
+> Projeto acadêmico desenvolvido para a disciplina IA Generativa Aplicada ao Desenvolvimento (UniFECAF/Rocketseat), a partir do desafio de construir um copiloto corporativo inteligente utilizando ferramentas modernas de desenvolvimento assistido por IA.
+>
 > Assistente corporativo que permite a corretores de imóveis consultar, em linguagem natural, tanto o portfólio de propriedades quanto o conteúdo de documentos normativos internos — com respostas fundamentadas exclusivamente nos dados da empresa.
 
-Projeto acadêmico desenvolvido para a disciplina IA Generativa Aplicada ao Desenvolvimento (UniFECAF), a partir do desafio de construir um copiloto corporativo inteligente utilizando ferramentas modernas de desenvolvimento assistido por IA.
+## 📋 Sobre o Projeto
 
+*O problema*
 
-O problema
-Empresas em crescimento acumulam informação mais rápido do que conseguem organizá-la. Planilhas, PDFs, procedimentos e políticas internas coexistem em repositórios distintos, e o custo de encontrar a informação certa é alto — profissionais interrompem colegas para obter respostas já documentadas e decisões são tomadas sobre versões desatualizadas.
+Empresas em crescimento acumulam informações mais rápido do que conseguem organizá-las. Planilhas, PDFs, procedimentos e políticas internas coexistem em repositórios distintos, e o custo de encontrar a informação certa é alto.
 
 O cenário escolhido foi uma imobiliária de médio porte no litoral norte de Santa Catarina, porque o setor reúne de forma intensa as duas naturezas de informação que um copiloto corporativo precisa conciliar:
 
-Informação estruturada — características comerciais do imóvel (tipo, bairro, cidade, valor, área, quartos, situação documental), consultada por filtros combinados;
-Informação textual e normativa — manuais internos, regulamentos de condomínio e guias de regularização, consultada por assunto.
+*Informação estruturada* — características comerciais do imóvel (tipo, bairro, cidade, valor, área, quartos, situação documental), consultada por filtros combinados;
 
-Um corretor que atende cliente interessado em imóvel na planta precisa das duas ao mesmo tempo: quais unidades cabem no orçamento e qual documentação é exigível naquela fase da incorporação. As duas informações existem na empresa; nenhuma está a uma pergunta de distância.
+*Informação textual e normativa* — manuais internos, regulamentos de condomínio e guias de regularização, consultados por assunto.
 
+### Funcionalidades Principais
 
-Funcionalidades
-🔍 Consulta em linguagem natural ao portfólio, com filtros combinados de tipo, cidade, bairro, valor, área e número de quartos
-📝 Busca textual na descrição, permitindo perguntas por características que não são campos estruturados (churrasqueira, vista para o mar, mobiliado)
-📄 Consulta ao conteúdo de documentos normativos por assunto, sem exigir que o usuário conheça ou cite o nome do documento
-🖼️ Cards visuais com foto, gerados a partir dos dados estruturados retornados pela consulta — não do texto produzido pelo modelo
-🔐 Autenticação e controle de acesso por papéis (administrador e corretor), aplicado no banco de dados via Row Level Security
-🏠 Gestão de imóveis — cadastro, edição e exclusão, restritos ao administrador
-📷 Gestão de fotos com nomenclatura padronizada e remoção sincronizada entre banco de dados e armazenamento
+🔍 Consulta em linguagem natural ao portfólio, com filtros combinados.
+
+📝 Busca textual na descrição, permitindo perguntas por características que não são campos estruturados.
+
+📄 Consulta ao conteúdo de documentos normativos por assunto.
+
+🏠 Gestão de imóveis — cadastro, edição e exclusão, restritos ao administrador.
+
+📷 Gestão de fotos.
+
 📚 Módulo independente de documentos, com vínculo opcional a imóvel, distinguindo documentos institucionais dos específicos de uma unidade
 
+---
 
-Como funciona
+## 📝 Como funciona
+
 Percurso de uma pergunta como "apartamento em Itapema até 900 mil com churrasqueira":
 
-Corretor  ──►  Interface de chat
 
+           Corretor  ──►  Interface de chat
                     │
 
                     ▼
@@ -58,31 +66,40 @@ Corretor  ──►  Interface de chat
 
         ▼                       ▼
 
-  dados ──► Gemini        dados ──► Interface
-
-  (redige a resposta)     (renderiza os cards)
-
-O modelo não acessa o banco de dados. Ele recebe as descrições das ferramentas disponíveis, decide qual chamar e com quais parâmetros, e a função de servidor executa a consulta. Os cards exibidos ao corretor são construídos a partir dos dados estruturados retornados — de modo que, mesmo que a redação da resposta apresente imprecisão, valores, áreas e situações documentais têm origem verificável no banco.
-
-Ferramentas disponíveis ao modelo
-
-Ferramenta (function): buscar_imoveis
-Domínio: Características, valores e localização do portfólio
-Consulta: imoveis + imovel_fotos
-
-Ferramenta (function): buscar_documentos
-Domínio: Conteúdo normativo, contratual e procedimental
-Consulta: documentos
-
-Arquitetura
-Camada de interface — Aplicação React com roteamento por TanStack Router, no qual o gate de autenticação é estrutural: as rotas protegidas vivem sob um segmento reservado (_authenticated/), de modo que nenhuma tela interna é alcançável sem sessão válida.
-
-Camada de aplicação — Função de servidor que recebe a pergunta, encaminha ao modelo junto das descrições das ferramentas e do prompt de sistema, valida os parâmetros retornados e executa a consulta. A chave de acesso ao modelo permanece no servidor, nunca no navegador.
-
-Camada de dados — PostgreSQL gerenciado pelo Supabase, com Row Level Security ativa em todas as tabelas, autenticação integrada e armazenamento de arquivos em buckets com políticas próprias. As regras de acesso são aplicadas pelo banco, não pela interface.
+     dados ──► Gemini        dados ──► Interface
+    (redige a resposta)     (renderiza os cards)
 
 
-Modelo de dados
+Pelo fluxo, percebe-se que o modelo não acessa o banco de dados. Ele recebe as descrições das ferramentas disponíveis, decide qual chamar e com quais parâmetros, e a função de servidor executa a consulta. Os cards exibidos ao corretor são construídos a partir dos dados estruturados retornados.
+
+---
+
+## 🛠️ Ferramentas (functions - tool use)
+
+| FERRAMENTA          | DOMÍNIO        | CONSULTA        |
+| :--- | :--- | :--- |
+| buscar_imoveis      | Características, valores e localização do portfólio | imoveis + imovel_fotos
+| buscar_documentos   | Conteúdo normativo, contratual e procedimental.     | documentos
+
+---
+
+## Arquitetura
+
+*Camada de interface* — Aplicação React com roteamento por TanStack Router, no qual o gate de autenticação é estrutural: as rotas protegidas vivem sob um segmento reservado (_authenticated/), de modo que nenhuma tela interna é alcançável sem sessão válida.
+
+*Camada de aplicação* — Função de servidor que recebe a pergunta, encaminha ao modelo junto das descrições das ferramentas e do prompt de sistema, valida os parâmetros retornados e executa a consulta. A chave de acesso ao modelo permanece no servidor, nunca no navegador.
+
+*Camada de dados* — PostgreSQL gerenciado pelo Supabase, com Row Level Security ativa em todas as tabelas, autenticação integrada e armazenamento de arquivos em buckets com políticas próprias. As regras de acesso são aplicadas pelo banco, não pela interface.
+
+## Modelo de dados
+
+| Entidade        | Função        | Decisão de Modelagem        |
+| :--- | :--- | :--- |
+| imoveis        | Portfólio, com características comerciais e situação documental  | Não armazena caminho de foto — a relação com imagens é externalizada  |
+| imovel_fotos    | Fotos vinculadas a um imóvel        | Guarda o caminho do arquivo, não a URL, pois URLs assinadas expiram        |
+| documentos        | Documentos normativos, com coluna de texto consultável pela IA        | Vínculo com imóvel é opcional, permitindo documentos institucionais |
+| profiles        | Perfil do usuário, ligado à autenticação, com o papel atribuído        | Base do controle de acesso por papéis        |
+
 
 Relacionamentos
 
@@ -181,7 +198,6 @@ Habilitação da verificação de senhas comprometidas e atualização das depen
 Autoria
 Bruna Gabriela Ribeiro Sartor
 
-Projeto acadêmico — disciplina de IA Generativa Aplicada ao Desenvolvimento Centro Universitário UniFECAF · 2026
 
 
 
