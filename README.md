@@ -1,5 +1,6 @@
-ImobIA — Copiloto Corporativo da Litoral Prime
-Assistente corporativo que permite a corretores de imóveis consultar, em linguagem natural, tanto o portfólio de propriedades quanto o conteúdo de documentos normativos internos — com respostas fundamentadas exclusivamente nos dados da empresa.
+# ImobIA — Copiloto Corporativo da Litoral Prime
+
+> Assistente corporativo que permite a corretores de imóveis consultar, em linguagem natural, tanto o portfólio de propriedades quanto o conteúdo de documentos normativos internos — com respostas fundamentadas exclusivamente nos dados da empresa.
 
 Projeto acadêmico desenvolvido para a disciplina IA Generativa Aplicada ao Desenvolvimento (UniFECAF), a partir do desafio de construir um copiloto corporativo inteligente utilizando ferramentas modernas de desenvolvimento assistido por IA.
 
