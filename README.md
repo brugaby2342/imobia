@@ -78,8 +78,8 @@ Pelo fluxo, percebe-se que o modelo não acessa o banco de dados. Ele recebe as 
 
 | FERRAMENTA          | DOMÍNIO        | CONSULTA        |
 | :--- | :--- | :--- |
-| buscar_imoveis      | Características, valores e localização do portfólio | imoveis + imovel_fotos
-| buscar_documentos   | Conteúdo normativo, contratual e procedimental.     | documentos
+| `buscar_imoveis`      | Características, valores e localização do portfólio | `imoveis` + `imovel_fotos`
+| `buscar_documentos`   | Conteúdo normativo, contratual e procedimental.     | documentos
 
 ---
 
@@ -91,113 +91,129 @@ Pelo fluxo, percebe-se que o modelo não acessa o banco de dados. Ele recebe as 
 
 *Camada de dados* — PostgreSQL gerenciado pelo Supabase, com Row Level Security ativa em todas as tabelas, autenticação integrada e armazenamento de arquivos em buckets com políticas próprias. As regras de acesso são aplicadas pelo banco, não pela interface.
 
+---
+
 ## Modelo de dados
 
 | Entidade        | Função        | Decisão de Modelagem        |
 | :--- | :--- | :--- |
-| imoveis        | Portfólio, com características comerciais e situação documental  | Não armazena caminho de foto — a relação com imagens é externalizada  |
-| imovel_fotos    | Fotos vinculadas a um imóvel        | Guarda o caminho do arquivo, não a URL, pois URLs assinadas expiram        |
-| documentos        | Documentos normativos, com coluna de texto consultável pela IA        | Vínculo com imóvel é opcional, permitindo documentos institucionais |
-| profiles        | Perfil do usuário, ligado à autenticação, com o papel atribuído        | Base do controle de acesso por papéis        |
+| `imoveis`        | Portfólio, com características comerciais e situação documental  | Não armazena caminho de foto — a relação com imagens é externalizada  |
+| `imovel_fotos`    | Fotos vinculadas a um imóvel        | Guarda o caminho do arquivo, não a URL, pois URLs assinadas expiram        |
+| `documentos`        | Documentos normativos, com coluna de texto consultável pela IA        | Vínculo com imóvel é opcional, permitindo documentos institucionais |
+| `profiles`        | Perfil do usuário, ligado à autenticação, com o papel atribuído        | Base do controle de acesso por papéis        |
 
+**Relacionamentos**
 
-Relacionamentos
+Um imóvel possui várias fotos — 1:N, com ON DELETE CASCADE (a foto não existe sem o imóvel);
 
-Um imóvel possui várias fotos — 1:N, com ON DELETE CASCADE (a foto não existe sem o imóvel)
-Um imóvel pode ter vários documentos vinculados, e um documento pode não pertencer a nenhum imóvel — 1:N opcional, com ON DELETE SET NULL (excluir o imóvel desvincula, não apaga o documento)
+Um imóvel pode ter vários documentos vinculados, e um documento pode não pertencer a nenhum imóvel — 1:N opcional, com ON DELETE SET NULL (excluir o imóvel desvincula, não apaga o documento);
+
 Cada perfil corresponde a um usuário autenticado — 1:1
 
-Buckets de armazenamento
+**Buckets de armazenamento**
 
-Tecnologias utilizadas
+`imovel_fotos` e `documentos`
 
+---
 
-Ferramentas de IA utilizadas
-O projeto usou IA em duas frentes distintas, que convém não confundir: a IA como funcionalidade do produto e a IA como instrumento de desenvolvimento.
+## Tecnologias utilizadas
 
-Ferramenta
+| Camada          | Tecnologia          |
+| :--- | :--- | :--- |
+| Frontend          | React, TypeScript, TanStack Router, Tailwind CSS |
+| Backend          | Funções de servidor (Supabase / Lovable)          |
+| Banco de Dados           | PostgreSQL (Supabase), com Row Level Security |
+| Autenticação          | Supabase Auth (e-mail e senha) |
+| Armazenamento          | Supabase Storage |
+| Modelo de Linguagem          | Google Gemini 2.5 Flash |
+| Versionamento          | Git / GitHub |
 
-Google Gemini 2.5 Flash
+*Ferramentas de IA*
 
-Lovable
+O projeto usou IA em duas frentes distintas, a IA como funcionalidade do produto e a IA como instrumento de desenvolvimento.
 
-GitHub Copilot (modo Agent)
+| Ferramenta | Frente | Papel |
+| :--- | :--- | :--- |
+| Google Gemini 2.5 Flash | Produto | Interpreta as perguntas, escolhe a ferramenta de busca e redige as respostas |
+|Lovable | Desenvolvimento | Geração e alteração de código a partir de prompts, com migrations no banco e sincronização com o repositório |
+| GitHub Copilot (modo agent) | Desenvolvimento | Assistência no ambiente local e operação do servidor MCP de memória do projeto |
+| Claude | Desenvolvimento | Formulação dos prompts, diagnóstico de erros, decisões de arquitetura e documentação |
+| ChatGPT | Dados | Produção das fotos fictícias, coerentes com a descrição de cada imóvel |
 
-Claude
-
-ChatGPT
-
-
-O Gemini integra o produto e segue operando após a entrega; as demais atuaram no processo e não estão presentes na aplicação final.
-Gerenciamento de contexto com MCP
-Um projeto desenvolvido ao longo de vários dias enfrenta um problema específico: cada nova sessão com uma ferramenta de IA começa sem memória das decisões anteriores, e decisões deliberadas correm o risco de ser desfeitas por não estarem registradas.
+*Gerenciamento de contexto com MCP*
 
 Foi configurado um servidor de memória via Model Context Protocol no ambiente local, integrado ao GitHub Copilot em modo Agent, mantendo o estado da aplicação, as pendências priorizadas e as decisões arquiteturais com sua justificativa:
 
-docs/memoria-projeto.json — fonte estruturada, legível por máquina
-docs/notas-desenvolvimento.md — versão legível por humanos, mantida em consistência
+`docs/memoria-projeto.json` — fonte estruturada, legível por máquina
+`docs/notas-desenvolvimento.md` — versão legível por humanos, mantida em consistência
+`docs/erros-e-aprendizados.md` - 
+
+---
+
+## Segurança e Governança
+
+- Controle de acesso no banco, não na interface. 
+- Menor privilégio: O corretor lê portfólio, fotos e documentos; o administrador acrescenta as operações de escrita.
+- Respostas fundamentadas: O modelo é instruído a responder somente com base nos dados retornados pelas ferramentas, a declarar explicitamente quando nada é encontrado e a citar o documento de origem em respostas normativas.
+- Finalidade específica e minimização da LGPD (Lei nº 13.709/2018): O copiloto responde apenas sobre características comerciais dos imóveis, não sobre dados pessoais dos proprietários.
+- Limite de competência: O prompt de sistema estabelece que o copiloto não é fonte de aconselhamento jurídico; dúvidas de regularização que extrapolem o registro cadastral devem ser encaminhadas ao setor jurídico.
+- Cadastro sob autorização: A criação de conta no ImobIA está condicionada à autorização prévia do administrador, impedindo o acesso de terceiros desvinculados à imobiliária. Uma lista de e-mails autorizados pelo administrador é verificada por gatilho no momento do registro — quem não consta nela não cria conta.
+- A chave do modelo nunca vai ao navegador. A chamada ao Gemini acontece na função de servidor.
+
+---
+
+## Como acessar
+
+Acesse a versão publicada:
+[https://imobia-copilot.lovable.app]
+
+---
+
+## Credenciais para teste:
+
+As credenciais são fornecidas porque o cadastro exige autorização prévia do administrador: apenas e-mails liberados na base conseguem criar conta.
 
 
-Segurança e governança
-Controle de acesso no banco, não na interface. Todas as tabelas operam com Row Level Security. Ocultar um botão não é controle de acesso: mesmo que a camada de apresentação falhe, a operação é negada pelo banco.
-Menor privilégio. O corretor lê portfólio, fotos e documentos; o administrador acrescenta as operações de escrita.
-Respostas fundamentadas. O modelo é instruído a responder somente com base nos dados retornados pelas ferramentas, a declarar explicitamente quando nada é encontrado e a citar o documento de origem em respostas normativas.
-Sem dados pessoais. O copiloto responde apenas sobre características comerciais dos imóveis, não sobre proprietários — atendendo aos princípios de finalidade específica e minimização da LGPD (Lei nº 13.709/2018).
-Limite de competência. O prompt de sistema estabelece que o copiloto não é fonte de aconselhamento jurídico; dúvidas de regularização que extrapolem o registro cadastral devem ser encaminhadas ao setor jurídico.
-A chave do modelo nunca vai ao navegador. A chamada ao Gemini acontece na função de servidor.
+Administrador
+e-mail:
+senha:
 
+Corretor
+e-mail: jicesa2239@kingcq.com
+senha: jicesa
 
-Estrutura do projeto
-.
+e-mail para teste de cadastro
+e-mail:
+senha:
 
-├── src/
+---
 
-│   ├── routes/
+## Perguntas Sugeridas para Testes
 
-│   │   └── _authenticated/     # rotas protegidas por sessão
+*Apartamento em Itapema até 900 mil com 3 quartos*
 
-│   ├── components/
+*Quais imóveis têm churrasqueira e vista para o mar?*
 
-│   ├── integrations/supabase/
+*O que é exigido na documentação de imóvel na planta?*
 
-│   └── lib/
+*Quais imóveis têm pendência na documentação?*
 
-├── supabase/
+---
 
-│   └── migrations/             # histórico de evolução do esquema
+Prints
 
-├── docs/
+- Resultado da consulta com a imagem do card;
+- Consulta de documento
+- Listagem de Imóveis
+- Cadastro de imóveis e fotos
+- Módulo documentos
 
-│   ├── memoria-projeto.json    # memória de projeto (MCP)
+---
 
-│   ├── notas-desenvolvimento.md
+## 📄 Licença
+Projeto desenvolvido para fins acadêmicos. Uso livre para estudo e referência.
 
-│   ├── erros-e-aprendizados.md
-
-│   └── img/                    # prints usados neste README
-
-└── README.md
-
-
-
-Limitações conhecidas
-Busca textual, não semântica. A consulta a documentos opera por correspondência de termos e não captura sinonímia: uma pergunta sobre "animais de estimação" não encontra um regulamento que trate de "animais domésticos". Com três documentos o efeito é mitigado pela devolução do conteúdo integral ao modelo, mas a limitação delimita a escala em que a solução funciona.
-Conteúdo dos documentos inserido manualmente. Não há extração automática de texto a partir dos PDFs enviados, o que impacta a escalabilidade da base de conhecimento.
-Sem histórico de conversas. Cada pergunta é independente; não há perguntas de acompanhamento com contexto preservado.
-Verificação de senhas vazadas não habilitada. O recurso exige plano pago da plataforma de banco de dados.
-
-
-Trabalhos futuros
-Busca semântica por embeddings vetoriais com a extensão pgvector, substituindo a correspondência textual de termos — justificável quando o volume tornar inviável entregar o conteúdo integral ao modelo
-Orquestração multiagente, com agentes especializados em imóveis e documentos sob um roteador, em lugar da especialização por ferramentas com chamada única
-Extração automática de texto dos arquivos enviados, com o tratamento de segurança que essa ingestão exige
-Histórico de conversas por usuário
-Habilitação da verificação de senhas comprometidas e atualização das dependências vulneráveis
-
-
-Autoria
-Bruna Gabriela Ribeiro Sartor
-
-
+Feito por Bruna Gabriela Ribeiro Sartor</br>
+Acadêmica em Inteligência Artificial e Automação Digital
 
 
