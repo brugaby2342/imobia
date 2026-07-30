@@ -206,11 +206,32 @@ Crie a senha no cadastro
 
 📷 Prints
 
-- Resultado da consulta com a imagem do card;
-- Consulta de documento
-- Listagem de Imóveis
+
 - Cadastro de imóveis e fotos
-- Módulo documentos
+<img width="1582" height="1035" alt="caaastro-foto" src="https://github.com/user-attachments/assets/8fc132a8-816b-4aa4-a9a9-e192640c25ca" />
+
+
+- Consulta de documento
+<img width="1582" height="1035" alt="ex pesquisa-doc" src="https://github.com/user-attachments/assets/9b1ad138-50dc-4f6f-94dc-c18274329e80" />
+
+
+- Resultado da consulta com a imagem do card;
+<img width="811" height="778" alt="card" src="https://github.com/user-attachments/assets/17a09744-46eb-470f-a539-26186ed3e289" />
+
+
+- Interação com chat
+<img width="1582" height="1035" alt="interacao-chat" src="https://github.com/user-attachments/assets/081eae52-d320-4195-97b5-85c9f0681a52" />
+
+
+<img width="1582" height="1035" alt="ex chat" src="https://github.com/user-attachments/assets/5599dd5c-2cf2-4a9c-92ab-4bb66a46e2bc" />
+
+
+
+- Listagem de Imóveis
+<img width="1400" height="803" alt="listagem imoveis" src="https://github.com/user-attachments/assets/31d00535-e8da-4c8a-a029-9514b8419b08" />
+
+
+
 
 ---
 
