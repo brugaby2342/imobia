@@ -192,7 +192,7 @@ senha:
 
 ## ﹖ Perguntas Sugeridas para Testes
 
-*Gostaria de comprar um imóvel na planta em Itapema*
+*Imóvel na planta em Itapema*
 
 *Quais imóveis têm churrasqueira e vista para o mar em Porto Belo?*
 - *E em Itapema?*
