@@ -1,5 +1,6 @@
 <h1 align="center">ImobIA — Copiloto Corporativo da Litoral Prime</h1> </br></br>
 
+<img width="1400" height="803" alt="capa" src="https://github.com/user-attachments/assets/ad6e873a-f511-41ce-9232-6519ac0aab55" />
 
 
 > Projeto acadêmico desenvolvido para a disciplina IA Generativa Aplicada ao Desenvolvimento (UniFECAF/Rocketseat), a partir do desafio de construir um copiloto corporativo inteligente utilizando ferramentas modernas de desenvolvimento assistido por IA.
@@ -144,7 +145,7 @@ O projeto usou IA em duas frentes distintas, a IA como funcionalidade do produto
 
 Foi configurado um servidor de memória via Model Context Protocol no ambiente local, integrado ao GitHub Copilot em modo Agent, mantendo o estado da aplicação, as pendências priorizadas e as decisões arquiteturais com sua justificativa:
 
-[https://github.com/brugaby2342/imobia/tree/main/docs]
+[Pasta de documentos](https://github.com/brugaby2342/imobia/tree/main/docs)
 
 `docs/memoria-projeto.json` — fonte estruturada, legível por máquina.</br>
 `docs/notas-desenvolvimento.md` — versão legível por humanos, mantida em consistência.</br>
@@ -167,7 +168,7 @@ Foi configurado um servidor de memória via Model Context Protocol no ambiente l
 ## 📔 Como acessar
 
 Acesse a versão publicada:
-[https://imobia-copilot.lovable.app]
+[ImobIA](https://imobia-copilot.lovable.app)
 
 ---
 
