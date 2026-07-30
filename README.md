@@ -192,9 +192,10 @@ senha:
 
 ## ﹖ Perguntas Sugeridas para Testes
 
-*Apartamento em Itapema até 900 mil com 3 quartos*
+*Gostaria de comprar um imóvel na planta em Itapema*
 
-*Quais imóveis têm churrasqueira e vista para o mar?*
+*Quais imóveis têm churrasqueira e vista para o mar em Porto Belo?*
+- *E em Itapema?*
 
 *O que é exigido na documentação de imóvel na planta?*
 
