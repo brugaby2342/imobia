@@ -178,16 +178,16 @@ As credenciais são fornecidas porque o cadastro exige autorização prévia do 
 
 
 Administrador </br>
-e-mail:</br>
-senha:</br>
+e-mail: gabrielarsartor@gmail.com</br>
+senha: 260991</br>
 
 Corretor</br>
 e-mail: jicesa2239@kingcq.com</br>
 senha: jicesa</br>
 
 e-mail para teste de cadastro</br>
-e-mail:</br>
-senha:
+e-mail: niwima9405@kierko.com</br>
+Crie a senha no cadastro
 
 ---
 
