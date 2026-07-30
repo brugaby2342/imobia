@@ -185,7 +185,7 @@ Corretor</br>
 e-mail: jicesa2239@kingcq.com</br>
 senha: jicesa</br>
 
-e-mail para teste de cadastro</br>
+e-mail para teste de cadastro (temporário)</br>
 e-mail: niwima9405@kierko.com</br>
 Crie a senha no cadastro
 
