@@ -178,8 +178,8 @@ As credenciais são fornecidas porque o cadastro exige autorização prévia do 
 
 
 Administrador </br>
-e-mail: gabrielarsartor@gmail.com</br>
-senha: 260991</br>
+e-mail: admin.novo@gmail.com</br>
+senha: adminovo</br>
 
 Corretor</br>
 e-mail: jicesa2239@kingcq.com</br>
