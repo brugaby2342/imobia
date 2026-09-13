@@ -32,3 +32,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Arquivo gerado automaticamente pelo TanStack Router
+src/routeTree.gen.ts
